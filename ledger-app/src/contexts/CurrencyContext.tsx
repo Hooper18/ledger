@@ -88,7 +88,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         .update({ preferred_currency: c })
         .eq('id', user.id)
       if (error) {
-        console.error('upsert error:', JSON.stringify(error, null, 2))
         setBase(prev)
         throw error
       }
@@ -106,7 +105,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         .update({ default_currency: c })
         .eq('id', user.id)
       if (error) {
-        console.error('upsert error:', JSON.stringify(error, null, 2))
         setDefault(prev)
         throw error
       }
