@@ -85,8 +85,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       if (!user) return
       const { error } = await supabase
         .from('users_profile')
-        .upsert({ id: user.id, preferred_currency: c }, { onConflict: 'id' })
+        .update({ preferred_currency: c })
+        .eq('id', user.id)
       if (error) {
+        console.error('Failed to save preferred_currency:', error)
         setBase(prev)
         throw error
       }
@@ -101,8 +103,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       if (!user) return
       const { error } = await supabase
         .from('users_profile')
-        .upsert({ id: user.id, default_currency: c }, { onConflict: 'id' })
+        .update({ default_currency: c })
+        .eq('id', user.id)
       if (error) {
+        console.error('Failed to save default_currency:', error)
         setDefault(prev)
         throw error
       }

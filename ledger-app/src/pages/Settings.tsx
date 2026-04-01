@@ -18,10 +18,15 @@ export default function Settings() {
 
   async function handleSelect(c: Currency) {
     setSaving(true)
-    if (modal === 'preferred') await setBaseCurrency(c)
-    if (modal === 'default')   await setDefaultCurrency(c)
-    setSaving(false)
-    setModal(null)
+    try {
+      if (modal === 'preferred') await setBaseCurrency(c)
+      if (modal === 'default')   await setDefaultCurrency(c)
+      setModal(null)
+    } catch {
+      // error already logged in CurrencyContext; UI reverted by setBase/setDefault(prev)
+    } finally {
+      setSaving(false)
+    }
   }
 
   async function handleSignOut() {

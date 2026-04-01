@@ -30,6 +30,7 @@ export interface Database {
           default_currency?: string
           updated_at?: string
         }
+        Relationships: []
       }
       transactions: {
         Row: {
@@ -68,6 +69,7 @@ export interface Database {
           exchange_rate?: number | null
           updated_at?: string
         }
+        Relationships: []
       }
       categories: {
         Row: {
@@ -91,6 +93,7 @@ export interface Database {
           type?: string
           icon?: string
         }
+        Relationships: []
       }
       budgets: {
         Row: {
@@ -117,6 +120,7 @@ export interface Database {
           currency?: string
           period?: string
         }
+        Relationships: []
       }
     }
   }
