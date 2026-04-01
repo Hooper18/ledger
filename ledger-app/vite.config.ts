@@ -12,7 +12,7 @@ export default defineConfig({
         name: '口袋记账',
         short_name: '记账',
         description: '口袋记账 - 管理你的每一分钱',
-        theme_color: '#e53935',
+        theme_color: '#ffffff',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',
