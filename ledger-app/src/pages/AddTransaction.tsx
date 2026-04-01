@@ -271,46 +271,46 @@ export default function AddTransaction() {
       </div>
 
       {/* Fixed bottom: amount + numpad */}
-      <div className="shrink-0 border-t border-gray-100 bg-white px-4 pt-3 pb-3">
+      <div className="shrink-0 border-t border-gray-100 bg-white px-4 pt-2 pb-2">
 
         {/* Amount display */}
-        <div className="flex items-baseline gap-1 bg-gray-50 rounded-xl px-4 py-2.5 mb-2.5">
+        <div className="flex items-baseline gap-1 bg-gray-50 rounded-xl px-4 py-1.5 mb-1.5">
           <span className="text-lg text-gray-400">{symbol}</span>
           <span className="text-3xl font-bold text-gray-800 tracking-tight flex-1 truncate">{amount}</span>
         </div>
 
         {/* Numpad */}
-        <div className="grid grid-cols-4 gap-1.5">
+        <div className="grid grid-cols-4 gap-1">
           {['7','8','9'].map(k => (
             <button key={k} onClick={() => numPress(k)}
-              className="py-[10px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
+              className="py-[7px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
               {k}
             </button>
           ))}
           <button onClick={numDel}
-            className="py-[10px] bg-white border border-gray-100 rounded-xl text-base text-gray-500 active:scale-95 transition-transform">
+            className="py-[7px] bg-white border border-gray-100 rounded-xl text-base text-gray-500 active:scale-95 transition-transform">
             ⌫
           </button>
 
           {['4','5','6'].map(k => (
             <button key={k} onClick={() => numPress(k)}
-              className="py-[10px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
+              className="py-[7px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
               {k}
             </button>
           ))}
           {/* "再记" only shown in add mode */}
           {editTx ? (
-            <div className="py-[10px] bg-gray-50 rounded-xl" />
+            <div className="py-[7px] bg-gray-50 rounded-xl" />
           ) : (
             <button onClick={() => handleSave(true)} disabled={submitting}
-              className="py-[10px] bg-blue-500 text-white rounded-xl text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50">
+              className="py-[7px] bg-blue-500 text-white rounded-xl text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50">
               再记
             </button>
           )}
 
           {['1','2','3'].map(k => (
             <button key={k} onClick={() => numPress(k)}
-              className="py-[10px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
+              className="py-[7px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
               {k}
             </button>
           ))}
@@ -321,15 +321,15 @@ export default function AddTransaction() {
           </button>
 
           <button onClick={() => numPress('0')}
-            className="py-[10px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
+            className="py-[7px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
             0
           </button>
           <button onClick={() => numPress('00')}
-            className="py-[10px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
+            className="py-[7px] bg-gray-50 rounded-xl text-lg font-medium text-gray-800 active:scale-95 transition-transform">
             00
           </button>
           <button onClick={() => numPress('.')}
-            className="py-[10px] bg-white border border-gray-100 rounded-xl text-lg text-gray-600 active:scale-95 transition-transform">
+            className="py-[7px] bg-white border border-gray-100 rounded-xl text-lg text-gray-600 active:scale-95 transition-transform">
             .
           </button>
         </div>
