@@ -13,7 +13,7 @@ export default function BottomNav() {
   const navigate = useNavigate()
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 safe-bottom z-50">
+    <nav className="shrink-0 w-full bg-white border-t border-gray-100 safe-bottom z-10">
       <div className="flex items-end h-16 px-1">
         {tabs.map(({ path, label, Icon, isCTA }) => {
           if (isCTA) {
