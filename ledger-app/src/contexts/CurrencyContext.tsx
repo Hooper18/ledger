@@ -21,10 +21,10 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth()
-  const [baseCurrency, setBase] = useState<Currency>('MYR')
-  const [defaultCurrency, setDefault] = useState<Currency>('MYR')
-  // rates are relative to MYR: rates[X] = how many X per 1 MYR
-  const [rates, setRates] = useState<Record<string, number>>({ MYR: 1 })
+  const [baseCurrency, setBase] = useState<Currency>('CNY')
+  const [defaultCurrency, setDefault] = useState<Currency>('CNY')
+  // rates are relative to CNY: rates[X] = how many X per 1 CNY
+  const [rates, setRates] = useState<Record<string, number>>({ CNY: 1 })
   const [ratesLoading, setRatesLoading] = useState(true)
 
   // Load preferred_currency and default_currency from users_profile
@@ -54,12 +54,12 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
             return
           }
         }
-        const res = await fetch('https://api.exchangerate-api.com/v4/latest/MYR')
+        const res = await fetch('https://api.exchangerate-api.com/v4/latest/CNY')
         const json = await res.json()
         setRates(json.rates)
         localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: json.rates }))
       } catch {
-        // keep default rates (only MYR:1), amounts in other currencies won't convert
+        // keep default rates (only CNY:1), amounts in other currencies won't convert
       } finally {
         setRatesLoading(false)
       }
@@ -80,24 +80,34 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
 
   const setBaseCurrency = useCallback(
     async (c: Currency) => {
+      const prev = baseCurrency
       setBase(c)
       if (!user) return
-      await supabase
+      const { error } = await supabase
         .from('users_profile')
-        .upsert({ id: user.id, preferred_currency: c })
+        .upsert({ id: user.id, preferred_currency: c }, { onConflict: 'id' })
+      if (error) {
+        setBase(prev)
+        throw error
+      }
     },
-    [user],
+    [user, baseCurrency],
   )
 
   const setDefaultCurrency = useCallback(
     async (c: Currency) => {
+      const prev = defaultCurrency
       setDefault(c)
       if (!user) return
-      await supabase
+      const { error } = await supabase
         .from('users_profile')
-        .upsert({ id: user.id, default_currency: c })
+        .upsert({ id: user.id, default_currency: c }, { onConflict: 'id' })
+      if (error) {
+        setDefault(prev)
+        throw error
+      }
     },
-    [user],
+    [user, defaultCurrency],
   )
 
   return (

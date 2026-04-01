@@ -25,7 +25,7 @@ export default function Calendar() {
   const { user } = useAuth()
   const { baseCurrency, rates } = useCurrency()
 
-  const displayCurrency = (localStorage.getItem(LS_KEY) as Currency) ?? 'MYR'
+  const displayCurrency = (localStorage.getItem(LS_KEY) as Currency) ?? 'CNY'
 
   function convertTo(amount: number, from: string): number {
     if (from === displayCurrency) return amount

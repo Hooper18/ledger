@@ -53,7 +53,7 @@ const { user } = useAuth()
 
   // ── display currency ──
   const [displayCurrency, setDisplayCurrency] = useState<Currency>(() =>
-    (localStorage.getItem(LS_KEY) as Currency) ?? 'MYR'
+    (localStorage.getItem(LS_KEY) as Currency) ?? 'CNY'
   )
   const [showPicker, setShowPicker] = useState(false)
   const pickerRef = useRef<HTMLDivElement>(null)
