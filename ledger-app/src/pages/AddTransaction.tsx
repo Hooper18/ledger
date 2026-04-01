@@ -218,9 +218,9 @@ export default function AddTransaction() {
         </div>
 
         {/* Date + Currency */}
-        <div className="px-4 pb-4">
-          {/* Quick date buttons */}
-          <div className="flex gap-1.5 mb-2">
+        <div className="px-4 pb-3 shrink-0">
+          {/* Quick date buttons + currency on same row */}
+          <div className="flex gap-1 items-center">
             {([
               { mode: 'today',     label: '今天',  d: today     },
               { mode: 'yesterday', label: '昨天',  d: yesterday },
@@ -232,7 +232,7 @@ export default function AddTransaction() {
                   setDateMode(mode)
                   if (d) setDate(d)
                 }}
-                className={`flex-1 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                className={`flex-1 py-1 rounded-lg text-xs font-medium border transition-colors ${
                   dateMode === mode
                     ? 'bg-[#e53935] border-[#e53935] text-white'
                     : 'bg-white border-gray-200 text-gray-500'
@@ -241,34 +241,32 @@ export default function AddTransaction() {
                 {label}
               </button>
             ))}
+            {/* Currency picker — inline with date buttons */}
+            <div className="relative shrink-0 ml-1">
+              <button onClick={() => setShowCPicker(v => !v)}
+                className="flex items-center gap-0.5 px-2.5 py-1 bg-gray-50 border border-gray-100 rounded-lg text-xs font-medium whitespace-nowrap">
+                {currency}<ChevronDown size={12} className="text-gray-400" />
+              </button>
+              {showCurrencyPicker && (
+                <div className="absolute right-0 bottom-full mb-1 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-20 min-w-[80px]">
+                  {QUICK_CURRENCIES.map(c => (
+                    <button key={c} onClick={() => { setCurrency(c); setShowCPicker(false) }}
+                      className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${
+                        currency === c ? 'text-red-500 font-semibold' : 'text-gray-700'
+                      }`}>
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
           {/* Custom date input — only shown when "其他" is active */}
-          <div className={`flex gap-2 ${dateMode !== 'other' ? 'hidden' : ''}`}>
+          {dateMode === 'other' && (
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
-              className="flex-1 px-4 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:border-blue-400 focus:bg-white transition-colors"
+              className="w-full mt-1.5 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:border-blue-400 focus:bg-white transition-colors"
             />
-          </div>
-          {/* Currency picker row */}
-          <div className={`flex justify-end ${dateMode === 'other' ? 'mt-2' : ''}`}>
-          <div className="relative">
-            <button onClick={() => setShowCPicker(v => !v)}
-              className="flex items-center gap-1 px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm font-medium whitespace-nowrap">
-              {currency}<ChevronDown size={14} className="text-gray-400" />
-            </button>
-            {showCurrencyPicker && (
-              <div className="absolute right-0 bottom-full mb-1 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-20 min-w-[100px]">
-                {QUICK_CURRENCIES.map(c => (
-                  <button key={c} onClick={() => { setCurrency(c); setShowCPicker(false) }}
-                    className={`w-full px-4 py-2.5 text-left text-sm hover:bg-gray-50 ${
-                      currency === c ? 'text-red-500 font-semibold' : 'text-gray-700'
-                    }`}>
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-          </div>
+          )}
         </div>
       </div>
 

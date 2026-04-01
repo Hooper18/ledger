@@ -1,6 +1,5 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
-import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, ChevronRight, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
@@ -49,8 +48,7 @@ const TX_TYPES: { value: TransactionType; label: string }[] = [
 ]
 
 export default function Home() {
-  const navigate = useNavigate()
-  const { user } = useAuth()
+const { user } = useAuth()
   const { rates, ratesLoading } = useCurrency()
 
   // ── display currency ──
@@ -428,12 +426,6 @@ export default function Home() {
           )}
         </div>
 
-        {transactions.length > 0 && (
-          <button onClick={() => navigate('/add')}
-            className="shrink-0 py-3 text-xs text-primary font-medium border-t border-gray-100 active:bg-gray-50">
-            + 记一笔
-          </button>
-        )}
       </div>
 
       <div className="h-4 shrink-0" />
