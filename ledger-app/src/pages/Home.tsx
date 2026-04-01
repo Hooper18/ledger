@@ -235,7 +235,7 @@ const { user } = useAuth()
     <div className="flex flex-col h-full bg-gray-50">
 
       {/* ── Header ── */}
-      <div className="bg-primary text-white px-5 pt-4 pb-16 relative overflow-hidden">
+      <div className="bg-primary text-white px-5 pt-4 pb-16 relative overflow-hidden safe-top">
         <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10 pointer-events-none" />
 
         <div className="flex items-center justify-between mb-4">
