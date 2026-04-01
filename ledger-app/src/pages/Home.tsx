@@ -235,8 +235,10 @@ const { user } = useAuth()
     <div className="flex flex-col h-full bg-gray-50">
 
       {/* ── Header ── */}
-      <div className="bg-primary text-white px-5 pt-4 pb-16 relative overflow-hidden safe-top">
+      <div className="text-white px-5 pt-4 pb-16 relative overflow-hidden safe-top"
+        style={{ background: 'linear-gradient(135deg, #e53e3e 0%, #c0392b 100%)' }}>
         <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10 pointer-events-none" />
+        <div className="absolute -left-6 -bottom-6 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
 
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => changeMonth(-1)}
