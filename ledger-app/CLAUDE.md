@@ -37,11 +37,19 @@
 - [x] 多币种 + 汇率
 - [x] PWA 配置（vite-plugin-pwa，manifest，Service Worker，离线缓存）
 - [x] 部署到 Vercel：https://ledger-tusts.vercel.app
+- [x] 全局滚动修复
+- [x] 导航栏遮挡修复
+- [x] 记一笔键盘高度压缩
+- [x] 首页 header 改为风景图背景（图片：public/images/header-bg.jpg）
 
 ## UI 修复记录
 - 删除首页底部"+ 记一笔"文字按钮（保留底部导航栏红色"+"圆形按钮）
 - 记账页面日期快捷按钮改为紧凑一行（py-1 text-xs），货币选择移至同行右侧
 - 所有页面头部顶部空白修复：pt-12 → pt-4（viewport 未设 viewport-fit=cover，safe-area-inset-top 为 0，pt-12 全为多余空白）
+- 全局滚动修复：html/body/#root 加 height:100%; overflow:hidden；Layout 改用 h-dvh
+- 导航栏遮挡修复：BottomNav 从 fixed 改为正常流（shrink-0），Layout main 去掉 pb-16
+- 记一笔键盘压缩：py-[10px]→py-[7px]，金额区 py-2.5→py-1.5，容器 pt-3→pt-2，gap-1.5→gap-1（共节省约 50px）
+- PWA 状态栏：theme-color 改为 #ffffff，viewport 加 viewport-fit=cover
 
 ## GitHub
 Hooper18/ledger（main 分支）

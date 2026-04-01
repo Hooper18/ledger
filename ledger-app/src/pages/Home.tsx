@@ -236,9 +236,11 @@ const { user } = useAuth()
 
       {/* ── Header ── */}
       <div className="text-white px-5 pt-4 pb-16 relative overflow-hidden safe-top"
-        style={{ background: 'linear-gradient(135deg, #e53e3e 0%, #c0392b 100%)' }}>
-        <div className="absolute -right-8 -top-8 w-40 h-40 rounded-full bg-white/10 pointer-events-none" />
-        <div className="absolute -left-6 -bottom-6 w-24 h-24 rounded-full bg-white/10 pointer-events-none" />
+        style={{
+          backgroundImage: "linear-gradient(rgba(0,0,0,0.25), rgba(0,0,0,0.35)), url('/images/header-bg.jpg')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center top',
+        }}>
 
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => changeMonth(-1)}
@@ -252,7 +254,7 @@ const { user } = useAuth()
           </button>
         </div>
 
-        <p className="text-xs text-red-200 mb-1">本月支出</p>
+        <p className="text-xs text-white/70 mb-1">本月支出</p>
 
         <div className="flex items-baseline gap-2 mb-4">
           <div className="relative" ref={pickerRef}>
@@ -282,13 +284,13 @@ const { user } = useAuth()
 
         <div className="flex gap-8">
           <div>
-            <p className="text-xs text-red-200 mb-0.5">收入</p>
+            <p className="text-xs text-white/70 mb-0.5">收入</p>
             <p className="text-base font-semibold">{symbol} {fmt(incomeTotal)}</p>
           </div>
           <div className="w-px bg-red-400/40" />
           <div>
-            <p className="text-xs text-red-200 mb-0.5">结余</p>
-            <p className={`text-base font-semibold ${balance < 0 ? 'text-red-200' : ''}`}>
+            <p className="text-xs text-white/70 mb-0.5">结余</p>
+            <p className={`text-base font-semibold ${balance < 0 ? 'text-white/60' : ''}`}>
               {symbol} {fmt(balance)}
             </p>
           </div>
@@ -300,8 +302,8 @@ const { user } = useAuth()
           const pct = Math.min((expenseTotal / budgetAmt) * 100, 100)
           const isOver = expenseTotal > budgetAmt
           return (
-            <div className="mt-3 pt-3 border-t border-red-400/30">
-              <div className="flex justify-between text-xs text-red-200 mb-1.5">
+            <div className="mt-3 pt-3 border-t border-white/30">
+              <div className="flex justify-between text-xs text-white/70 mb-1.5">
                 <span>月度预算</span>
                 <span className={isOver ? 'text-white font-semibold' : ''}>
                   {isOver ? '⚠ 超出预算' : `${Math.round(pct)}% 已使用`}
