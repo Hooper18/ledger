@@ -276,7 +276,7 @@ const { user } = useAuth()
               <ChevronDown size={13} className={`transition-transform ${showPicker ? 'rotate-180' : ''}`} />
             </button>
             {showPicker && (
-              <div className="absolute top-full left-0 mt-1.5 bg-white rounded-xl shadow-xl overflow-hidden z-50 min-w-[110px]">
+              <div className="absolute top-full left-0 mt-1.5 bg-white rounded-xl shadow-xl overflow-hidden z-50 min-w-[110px]" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                 {DISPLAY_CURRENCIES.map(c => (
                   <button key={c} onClick={() => { setDisplayCurrency(c); setShowPicker(false) }}
                     className={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-gray-50 transition-colors ${
