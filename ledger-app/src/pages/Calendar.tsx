@@ -97,7 +97,7 @@ export default function Calendar() {
     <div className="flex flex-col h-full bg-gray-50">
 
       {/* ── Header ── */}
-      <div className="bg-white px-4 pt-12 pb-3 border-b border-gray-100 shrink-0">
+      <div className="bg-white px-4 pt-4 pb-3 border-b border-gray-100 shrink-0">
         <div className="flex items-center justify-between">
           <button onClick={() => changeMonth(-1)}
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center active:bg-gray-200">

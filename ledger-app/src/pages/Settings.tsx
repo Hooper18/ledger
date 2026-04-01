@@ -35,7 +35,7 @@ export default function Settings() {
     <div className="flex flex-col h-full bg-gray-50">
 
       {/* Header */}
-      <div className="bg-white px-4 pt-12 pb-4 border-b border-gray-100 shrink-0">
+      <div className="bg-white px-4 pt-4 pb-4 border-b border-gray-100 shrink-0">
         <h1 className="text-lg font-bold text-gray-800">设置</h1>
       </div>
 

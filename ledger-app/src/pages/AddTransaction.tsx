@@ -158,7 +158,7 @@ export default function AddTransaction() {
     <div className="flex flex-col h-full bg-white">
 
       {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-12 pb-3 border-b border-gray-100">
+      <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
         <button onClick={() => navigate(-1)} className="p-2 -ml-2">
           <X size={22} className="text-gray-600" />
         </button>
