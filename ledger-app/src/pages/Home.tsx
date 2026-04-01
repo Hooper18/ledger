@@ -49,7 +49,7 @@ const TX_TYPES: { value: TransactionType; label: string }[] = [
 
 export default function Home() {
 const { user } = useAuth()
-  const { rates, ratesLoading } = useCurrency()
+  const { baseCurrency, rates, ratesLoading } = useCurrency()
 
   // ── display currency ──
   const [displayCurrency, setDisplayCurrency] = useState<Currency>(() =>
@@ -72,6 +72,15 @@ const { user } = useAuth()
   function convertTo(amount: number, from: string): number {
     if (from === displayCurrency) return amount
     return (amount / (rates[from] ?? 1)) * (rates[displayCurrency] ?? 1)
+  }
+
+  function convertTx(tx: { amount: number; currency: string; exchange_rate?: number | null }): number {
+    if (tx.exchange_rate != null) {
+      const toBase = tx.amount / tx.exchange_rate
+      if (displayCurrency === baseCurrency) return toBase
+      return (toBase / (rates[baseCurrency] ?? 1)) * (rates[displayCurrency] ?? 1)
+    }
+    return convertTo(tx.amount, tx.currency)
   }
 
   // ── month navigation ──
@@ -100,7 +109,7 @@ const { user } = useAuth()
 
     supabase
       .from('transactions')
-      .select('id, type, amount, currency, description, date, category_id, categories(name, icon)')
+      .select('id, type, amount, currency, description, date, category_id, exchange_rate, categories(name, icon)')
       .eq('user_id', user.id)
       .gte('date', start)
       .lt('date', end)
@@ -124,7 +133,7 @@ const { user } = useAuth()
   // ── totals (always full month, unaffected by filter) ──
   const { expenseTotal, incomeTotal } = transactions.reduce(
     (acc, tx) => {
-      const v = convertTo(tx.amount, tx.currency)
+      const v = convertTx(tx)
       if (tx.type === 'expense') acc.expenseTotal += v
       if (tx.type === 'income')  acc.incomeTotal  += v
       return acc

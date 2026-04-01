@@ -23,13 +23,22 @@ function pad2(n: number) { return String(n).padStart(2, '0') }
 
 export default function Calendar() {
   const { user } = useAuth()
-  const { rates } = useCurrency()
+  const { baseCurrency, rates } = useCurrency()
 
   const displayCurrency = (localStorage.getItem(LS_KEY) as Currency) ?? 'MYR'
 
   function convertTo(amount: number, from: string): number {
     if (from === displayCurrency) return amount
     return (amount / (rates[from] ?? 1)) * (rates[displayCurrency] ?? 1)
+  }
+
+  function convertTx(tx: { amount: number; currency: string; exchange_rate?: number | null }): number {
+    if (tx.exchange_rate != null) {
+      const toBase = tx.amount / tx.exchange_rate
+      if (displayCurrency === baseCurrency) return toBase
+      return (toBase / (rates[baseCurrency] ?? 1)) * (rates[displayCurrency] ?? 1)
+    }
+    return convertTo(tx.amount, tx.currency)
   }
 
   function fmt(n: number) {
@@ -62,7 +71,7 @@ export default function Calendar() {
 
     supabase
       .from('transactions')
-      .select('id, type, amount, currency, description, date, category_id, categories(name, icon)')
+      .select('id, type, amount, currency, description, date, category_id, exchange_rate, categories(name, icon)')
       .eq('user_id', user.id)
       .gte('date', start)
       .lt('date', end)
@@ -77,7 +86,7 @@ export default function Calendar() {
   const byDate: Record<string, DaySummary> = {}
   for (const tx of transactions) {
     if (!byDate[tx.date]) byDate[tx.date] = { expense: 0, income: 0, txList: [] }
-    const v = convertTo(tx.amount, tx.currency)
+    const v = convertTx(tx)
     if (tx.type === 'expense') byDate[tx.date].expense += v
     if (tx.type === 'income')  byDate[tx.date].income  += v
     byDate[tx.date].txList.push(tx)
@@ -222,7 +231,7 @@ export default function Calendar() {
               </div>
             ) : (
               selectedSummary.txList.map(tx => {
-                const converted = convertTo(tx.amount, tx.currency)
+                const converted = convertTx(tx)
                 const isExpense = tx.type === 'expense'
                 const isIncome  = tx.type === 'income'
                 const origSymbol = CURRENCY_SYMBOLS[tx.currency as Currency] ?? tx.currency

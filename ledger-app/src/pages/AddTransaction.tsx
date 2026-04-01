@@ -39,7 +39,7 @@ export default function AddTransaction() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-  const { defaultCurrency } = useCurrency()
+  const { defaultCurrency, baseCurrency, rates } = useCurrency()
 
   // Edit mode: location.state.tx is set when navigating from TransactionSheet
   const editTx = (location.state as { tx?: TxDetail } | null)?.tx
@@ -124,10 +124,15 @@ export default function AddTransaction() {
 
     setSubmitting(true)
 
+    const exchange_rate = currency !== baseCurrency
+      ? (rates[currency] ?? 1) / (rates[baseCurrency] ?? 1)
+      : null
+
     const payload = {
       type, amount: parseFloat(amount), currency,
       category_id: selectedCategory,
       description: note.trim() || null, date,
+      exchange_rate,
     }
 
     let error

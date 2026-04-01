@@ -53,6 +53,11 @@ export default function Charts() {
     return (amount / (rates[from] ?? 1)) * (rates[dispCurrency] ?? 1)
   }
 
+  function cvtTx(amount: number, currency: string, exchange_rate?: number | null): number {
+    if (exchange_rate != null) return amount / exchange_rate
+    return cvt(amount, currency)
+  }
+
   function fmt(n: number) {
     return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
@@ -85,7 +90,7 @@ export default function Charts() {
 
     supabase
       .from('transactions')
-      .select('type, amount, currency, date')
+      .select('type, amount, currency, date, exchange_rate')
       .eq('user_id', user.id)
       .gte('date', startStr)
       .lt('date', endStr)
@@ -97,11 +102,11 @@ export default function Charts() {
           const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
           buckets[key] = { income: 0, expense: 0 }
         }
-        type Row = { type: string; amount: number; currency: string; date: string }
+        type Row = { type: string; amount: number; currency: string; date: string; exchange_rate: number | null }
         for (const tx of (data as Row[]) ?? []) {
           const key = tx.date.slice(0, 7)
           if (!buckets[key]) continue
-          const v = cvt(tx.amount, tx.currency)
+          const v = cvtTx(tx.amount, tx.currency, tx.exchange_rate)
           if (tx.type === 'income')  buckets[key].income  += v
           if (tx.type === 'expense') buckets[key].expense += v
         }
@@ -121,7 +126,7 @@ export default function Charts() {
     setMonthlyLoading(true)
     supabase
       .from('transactions')
-      .select('id, type, amount, currency, description, date, category_id, categories(name, icon)')
+      .select('id, type, amount, currency, description, date, category_id, exchange_rate, categories(name, icon)')
       .eq('user_id', user.id)
       .gte('date', monthStart(year, month))
       .lt('date', monthEnd(year, month))
@@ -139,7 +144,7 @@ export default function Charts() {
     for (const tx of monthlyTxs) {
       if (tx.type !== 'expense') continue
       const d = parseInt(tx.date.slice(8, 10))
-      arr[d - 1].expense += cvt(tx.amount, tx.currency)
+      arr[d - 1].expense += cvtTx(tx.amount, tx.currency, tx.exchange_rate)
     }
     return arr
   }, [monthlyTxs]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -152,7 +157,7 @@ export default function Charts() {
       if (tx.type !== catType) continue
       const key = tx.category_id
       if (!map[key]) map[key] = { name: tx.categories?.name ?? '未分类', icon: tx.categories?.icon ?? '📦', total: 0 }
-      map[key].total += cvt(tx.amount, tx.currency)
+      map[key].total += cvtTx(tx.amount, tx.currency, tx.exchange_rate)
     }
     return Object.values(map).sort((a, b) => b.total - a.total)
   }, [monthlyTxs, catType]) // eslint-disable-line react-hooks/exhaustive-deps

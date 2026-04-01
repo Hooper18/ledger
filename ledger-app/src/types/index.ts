@@ -49,6 +49,7 @@ export interface TxDetail {
   description: string | null
   date: string
   category_id: string
+  exchange_rate?: number | null
   categories: { name: string; icon: string } | null
 }
 

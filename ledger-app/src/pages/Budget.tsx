@@ -73,7 +73,7 @@ export default function Budget() {
         .eq('user_id', user.id)
         .eq('period', period),
       supabase.from('transactions')
-        .select('amount, currency, category_id')
+        .select('amount, currency, category_id, exchange_rate')
         .eq('user_id', user.id)
         .eq('type', 'expense')
         .gte('date', start)
@@ -87,8 +87,10 @@ export default function Budget() {
     if (txRes.data) {
       let total = 0
       const map = new Map<string, number>()
-      for (const tx of txRes.data as { amount: number; currency: string; category_id: string }[]) {
-        const v = convertTo(tx.amount, tx.currency)
+      for (const tx of txRes.data as { amount: number; currency: string; category_id: string; exchange_rate: number | null }[]) {
+        const v = tx.exchange_rate != null
+          ? tx.amount / tx.exchange_rate
+          : convertTo(tx.amount, tx.currency)
         total += v
         map.set(tx.category_id, (map.get(tx.category_id) ?? 0) + v)
       }
