@@ -35,7 +35,8 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       .select('preferred_currency, default_currency')
       .eq('id', user.id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        console.log('[CurrencyContext] users_profile query:', { data, error })
         if (data?.preferred_currency) setBase(data.preferred_currency as Currency)
         if (data?.default_currency)   setDefault(data.default_currency as Currency)
       })

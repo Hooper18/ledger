@@ -4,11 +4,11 @@ import { ChevronLeft, ChevronRight, ChevronDown, Search, SlidersHorizontal, X } 
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
-import { CURRENCY_SYMBOLS } from '../types'
+import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from '../types'
 import type { Currency, TxDetail, TransactionType } from '../types'
 import TransactionSheet from '../components/TransactionSheet'
 
-const DISPLAY_CURRENCIES: Currency[] = ['MYR', 'CNY', 'USD', 'SGD']
+const DISPLAY_CURRENCIES = SUPPORTED_CURRENCIES
 const LS_KEY = 'ledger_display_currency'
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
 
