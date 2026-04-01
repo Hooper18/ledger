@@ -60,6 +60,9 @@ const { user } = useAuth()
 
   useEffect(() => { localStorage.setItem(LS_KEY, displayCurrency) }, [displayCurrency])
 
+  // Sync to baseCurrency whenever the user updates their preferred currency in Settings
+  useEffect(() => { setDisplayCurrency(baseCurrency) }, [baseCurrency])
+
   useEffect(() => {
     if (!showPicker) return
     const onDown = (e: MouseEvent) => {
