@@ -56,21 +56,13 @@ const { user } = useAuth()
     (localStorage.getItem(LS_KEY) as Currency) ?? 'CNY'
   )
   const [showPicker, setShowPicker] = useState(false)
+  const [pickerPos, setPickerPos] = useState({ top: 0, left: 0 })
   const pickerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { localStorage.setItem(LS_KEY, displayCurrency) }, [displayCurrency])
 
   // Sync to baseCurrency whenever the user updates their preferred currency in Settings
   useEffect(() => { setDisplayCurrency(baseCurrency) }, [baseCurrency])
-
-  useEffect(() => {
-    if (!showPicker) return
-    const onDown = (e: MouseEvent) => {
-      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) setShowPicker(false)
-    }
-    document.addEventListener('mousedown', onDown)
-    return () => document.removeEventListener('mousedown', onDown)
-  }, [showPicker])
 
   function convertTo(amount: number, from: string): number {
     if (from === displayCurrency) return amount
@@ -270,24 +262,18 @@ const { user } = useAuth()
 
         <div className="flex items-baseline gap-2 mb-4">
           <div className="relative" ref={pickerRef}>
-            <button onClick={() => setShowPicker(v => !v)}
+            <button
+              onClick={() => {
+                if (!showPicker && pickerRef.current) {
+                  const r = pickerRef.current.getBoundingClientRect()
+                  setPickerPos({ top: r.bottom + 6, left: r.left })
+                }
+                setShowPicker(v => !v)
+              }}
               className="flex items-center gap-0.5 bg-white/20 hover:bg-white/30 active:bg-white/30 rounded-lg px-2 py-1 transition-colors">
               <span className="text-base font-semibold">{displayCurrency}</span>
               <ChevronDown size={13} className={`transition-transform ${showPicker ? 'rotate-180' : ''}`} />
             </button>
-            {showPicker && (
-              <div className="absolute top-full left-0 mt-1.5 bg-white rounded-xl shadow-xl overflow-hidden z-50 min-w-[110px]" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                {DISPLAY_CURRENCIES.map(c => (
-                  <button key={c} onClick={() => { setDisplayCurrency(c); setShowPicker(false) }}
-                    className={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-gray-50 transition-colors ${
-                      c === displayCurrency ? 'text-primary font-semibold bg-red-50' : 'text-gray-700'
-                    }`}>
-                    <span className="w-7 text-gray-400">{CURRENCY_SYMBOLS[c]}</span>
-                    <span>{c}</span>
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
           <span className="text-4xl font-bold tracking-tight">
             {ratesLoading ? '…' : fmt(expenseTotal)}
@@ -454,6 +440,26 @@ const { user } = useAuth()
           onClose={() => setSelectedTx(null)}
           onDeleted={handleDeleted}
         />
+      )}
+
+      {/* ── Currency picker portal ── */}
+      {showPicker && createPortal(
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
+          <div className="fixed z-50 bg-white rounded-xl shadow-xl min-w-[110px]"
+            style={{ top: pickerPos.top, left: pickerPos.left, maxHeight: '60vh', overflowY: 'auto' }}>
+            {DISPLAY_CURRENCIES.map(c => (
+              <button key={c} onClick={() => { setDisplayCurrency(c); setShowPicker(false) }}
+                className={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm hover:bg-gray-50 transition-colors ${
+                  c === displayCurrency ? 'text-[#e53935] font-semibold bg-red-50' : 'text-gray-700'
+                }`}>
+                <span className="w-7 text-gray-400">{CURRENCY_SYMBOLS[c]}</span>
+                <span>{c}</span>
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body
       )}
 
       {/* ── Filter panel (bottom sheet via portal) ── */}
