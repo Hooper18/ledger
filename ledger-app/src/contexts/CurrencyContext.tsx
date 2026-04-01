@@ -36,9 +36,14 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       .eq('id', user.id)
       .maybeSingle()
       .then(({ data, error }) => {
-        console.log('[CurrencyContext] users_profile query:', { data, error })
-        if (data?.preferred_currency) setBase(data.preferred_currency as Currency)
-        if (data?.default_currency)   setDefault(data.default_currency as Currency)
+        if (error) return
+        if (data) {
+          if (data.preferred_currency) setBase(data.preferred_currency as Currency)
+          if (data.default_currency)   setDefault(data.default_currency as Currency)
+        } else {
+          // Row missing (registered before trigger) — create it now with defaults
+          supabase.from('users_profile').upsert({ id: user!.id })
+        }
       })
   }, [user])
 
@@ -86,8 +91,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       if (!user) return
       const { error } = await supabase
         .from('users_profile')
-        .update({ preferred_currency: c })
-        .eq('id', user.id)
+        .upsert({ id: user.id, preferred_currency: c })
       if (error) {
         setBase(prev)
         throw error
@@ -103,8 +107,7 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       if (!user) return
       const { error } = await supabase
         .from('users_profile')
-        .update({ default_currency: c })
-        .eq('id', user.id)
+        .upsert({ id: user.id, default_currency: c })
       if (error) {
         setDefault(prev)
         throw error
