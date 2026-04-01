@@ -36,13 +36,12 @@
 - [x] 预算管理
 - [x] 多币种 + 汇率
 - [x] PWA 配置（vite-plugin-pwa，manifest，Service Worker，离线缓存）
-- [ ] 部署到 Vercel
+- [x] 部署到 Vercel：https://ledger-tusts.vercel.app
 
-## 下一步
-部署到 Vercel：
-1. 在 Vercel 导入 GitHub repo（Hooper18/ledger），Root Directory 设为 `ledger-app`
-2. 配置环境变量：`VITE_SUPABASE_URL`、`VITE_SUPABASE_ANON_KEY`
-3. 在 Supabase Dashboard → Authentication → URL Configuration 添加 Vercel 域名到 Allowed Origins
+## UI 修复记录
+- 删除首页底部"+ 记一笔"文字按钮（保留底部导航栏红色"+"圆形按钮）
+- 记账页面日期快捷按钮改为紧凑一行（py-1 text-xs），货币选择移至同行右侧
+- 所有页面头部顶部空白修复：pt-12 → pt-4（viewport 未设 viewport-fit=cover，safe-area-inset-top 为 0，pt-12 全为多余空白）
 
 ## GitHub
 Hooper18/ledger（main 分支）
