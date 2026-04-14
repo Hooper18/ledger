@@ -8,6 +8,13 @@ import { CURRENCY_SYMBOLS } from '../types'
 import type { Currency, TxDetail } from '../types'
 import type { TranslationKey } from '../lib/i18n'
 
+function localDateStr(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 const LS_KEY = 'ledger_display_currency'
 
 /** Returns a flat array of day numbers (null = padding cell) for the month grid */
@@ -97,10 +104,10 @@ export default function Calendar() {
   const symbol = CURRENCY_SYMBOLS[displayCurrency] ?? displayCurrency
 
   // ── selected day sheet ──
-  const [selectedDate, setSelectedDate] = useState<string | null>(now.toISOString().split('T')[0])
+  const [selectedDate, setSelectedDate] = useState<string | null>(localDateStr(now))
   const selectedSummary = selectedDate ? byDate[selectedDate] : null
 
-  const todayStr = now.toISOString().split('T')[0]
+  const todayStr = localDateStr(now)
   const calDays  = buildCalendarDays(year, month)
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
 
