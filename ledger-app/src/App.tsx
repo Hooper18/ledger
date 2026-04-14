@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { CurrencyProvider } from './contexts/CurrencyContext'
+import { LanguageProvider } from './contexts/LanguageContext'
 import Layout from './components/layout/Layout'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
@@ -103,11 +104,13 @@ function AppRoutes() {
 export default function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <CurrencyProvider>
-          <AppRoutes />
-        </CurrencyProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <CurrencyProvider>
+            <AppRoutes />
+          </CurrencyProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </BrowserRouter>
   )
 }

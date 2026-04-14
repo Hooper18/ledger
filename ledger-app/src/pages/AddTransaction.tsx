@@ -4,6 +4,7 @@ import { X, ChevronDown } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
+import { useLanguage } from '../contexts/LanguageContext'
 import type { TransactionType, Currency, TxDetail } from '../types'
 import {
   EXPENSE_CATEGORIES,
@@ -14,18 +15,12 @@ import {
 
 interface Category { id: string; name: string; type: string; icon: string }
 
-const QUICK_CURRENCIES: Currency[] = ['MYR', 'CNY', 'USD', 'SGD']
+const ALL_CURRENCIES: Currency[] = ['MYR', 'CNY', 'USD', 'SGD', 'HKD', 'JPY', 'EUR', 'GBP', 'THB', 'TWD', 'AUD', 'KHR']
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
   MYR: 'RM', CNY: '¥', USD: '$', SGD: 'S$',
   HKD: 'HK$', JPY: '¥', EUR: '€', GBP: '£',
   THB: '฿', KHR: '₫', TWD: 'NT$', AUD: 'A$',
-}
-
-const TYPE_CONFIG = {
-  expense:  { label: '支出', active: 'text-red-500 border-red-500'    },
-  income:   { label: '收入', active: 'text-green-500 border-green-500' },
-  transfer: { label: '转账', active: 'text-blue-500 border-blue-500'  },
 }
 
 function buildFallback(type: TransactionType): Category[] {
@@ -40,6 +35,7 @@ export default function AddTransaction() {
   const location = useLocation()
   const { user } = useAuth()
   const { defaultCurrency, baseCurrency, rates } = useCurrency()
+  const { t } = useLanguage()
 
   // Edit mode: location.state.tx is set when navigating from TransactionSheet
   const editTx = (location.state as { tx?: TxDetail } | null)?.tx
@@ -73,6 +69,12 @@ export default function AddTransaction() {
     return 'other'
   }
   const [dateMode, setDateMode] = useState<DateMode>(initDateMode)
+
+  const TYPE_CONFIG = {
+    expense:  { label: t('expense'), active: 'text-red-500 border-red-500'    },
+    income:   { label: t('income'),  active: 'text-green-500 border-green-500' },
+    transfer: { label: t('transfer'), active: 'text-blue-500 border-blue-500'  },
+  }
 
   // Load categories; do NOT reset selectedCategory here — that's handled by type tab clicks
   useEffect(() => {
@@ -119,8 +121,8 @@ export default function AddTransaction() {
 
   async function handleSave(continueAdding: boolean) {
     if (!user) return
-    if (!amount || parseFloat(amount) === 0) { showToast('请输入金额'); return }
-    if (!selectedCategory)                    { showToast('请选择分类'); return }
+    if (!amount || parseFloat(amount) === 0) { showToast(t('amountRequired')); return }
+    if (!selectedCategory)                    { showToast(t('categoryRequired')); return }
 
     setSubmitting(true)
 
@@ -143,13 +145,13 @@ export default function AddTransaction() {
     }
 
     setSubmitting(false)
-    if (error) { showToast('保存失败：' + error.message); return }
+    if (error) { showToast(t('saveFailed') + error.message); return }
 
     if (editTx) {
       navigate(-1)   // return to wherever edit was triggered from
     } else if (continueAdding) {
       setAmount('0'); setNote(''); setSelected('')
-      showToast('已保存，继续记账 ✓')
+      showToast(t('savedContinue'))
     } else {
       navigate('/')
     }
@@ -167,20 +169,20 @@ export default function AddTransaction() {
         <button onClick={() => navigate(-1)} className="p-2 -ml-2">
           <X size={22} className="text-gray-600" />
         </button>
-        <h1 className="text-base font-semibold">{editTx ? '编辑记录' : '记一笔'}</h1>
+        <h1 className="text-base font-semibold">{editTx ? t('editTx') : t('addTx')}</h1>
         <div className="w-9" />
       </div>
 
       {/* Type tabs */}
       <div className="flex border-b border-gray-100">
-        {(Object.keys(TYPE_CONFIG) as TransactionType[]).map(t => (
-          <button key={t}
-            onClick={() => { setType(t); setSelected('') }}
+        {(Object.keys(TYPE_CONFIG) as TransactionType[]).map(tp => (
+          <button key={tp}
+            onClick={() => { setType(tp); setSelected('') }}
             className={`flex-1 py-3 text-sm font-medium border-b-2 transition-colors ${
-              type === t ? TYPE_CONFIG[t].active : 'text-gray-400 border-transparent'
+              type === tp ? TYPE_CONFIG[tp].active : 'text-gray-400 border-transparent'
             }`}
           >
-            {TYPE_CONFIG[t].label}
+            {TYPE_CONFIG[tp].label}
           </button>
         ))}
       </div>
@@ -217,7 +219,7 @@ export default function AddTransaction() {
         {/* Note */}
         <div className="px-4 mb-2">
           <input type="text" value={note} onChange={e => setNote(e.target.value)}
-            placeholder="添加备注（选填）" maxLength={50}
+            placeholder={t('notePlaceholder')} maxLength={50}
             className="w-full px-4 py-2.5 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:border-blue-400 focus:bg-white transition-colors"
           />
         </div>
@@ -227,10 +229,10 @@ export default function AddTransaction() {
           {/* Quick date buttons + currency on same row */}
           <div className="flex gap-1 items-center">
             {([
-              { mode: 'today',     label: '今天',  d: today     },
-              { mode: 'yesterday', label: '昨天',  d: yesterday },
-              { mode: 'dayBefore', label: '前天',  d: dayBefore },
-              { mode: 'other',     label: '其他',  d: null      },
+              { mode: 'today',     label: t('today'),           d: today     },
+              { mode: 'yesterday', label: t('yesterday'),       d: yesterday },
+              { mode: 'dayBefore', label: t('dayBeforeYesterday'), d: dayBefore },
+              { mode: 'other',     label: t('other'),           d: null      },
             ] as { mode: DateMode; label: string; d: string | null }[]).map(({ mode, label, d }) => (
               <button key={mode}
                 onClick={() => {
@@ -253,8 +255,8 @@ export default function AddTransaction() {
                 {currency}<ChevronDown size={12} className="text-gray-400" />
               </button>
               {showCurrencyPicker && (
-                <div className="absolute right-0 bottom-full mb-1 bg-white border border-gray-100 rounded-xl shadow-lg overflow-hidden z-20 min-w-[80px]">
-                  {QUICK_CURRENCIES.map(c => (
+                <div className="absolute right-0 bottom-full mb-1 bg-white border border-gray-100 rounded-xl shadow-lg z-20 min-w-[80px] max-h-[180px] overflow-y-auto">
+                  {ALL_CURRENCIES.map(c => (
                     <button key={c} onClick={() => { setCurrency(c); setShowCPicker(false) }}
                       className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${
                         currency === c ? 'text-red-500 font-semibold' : 'text-gray-700'
@@ -266,7 +268,7 @@ export default function AddTransaction() {
               )}
             </div>
           </div>
-          {/* Custom date input — only shown when "其他" is active */}
+          {/* Custom date input — only shown when "其他/Other" is active */}
           {dateMode === 'other' && (
             <input type="date" value={date} onChange={e => setDate(e.target.value)}
               className="w-full mt-1.5 px-3 py-1.5 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:border-blue-400 focus:bg-white transition-colors"
@@ -303,13 +305,13 @@ export default function AddTransaction() {
               {k}
             </button>
           ))}
-          {/* "再记" only shown in add mode */}
+          {/* "再记/More" only shown in add mode */}
           {editTx ? (
             <div className="py-[7px] bg-gray-50 rounded-xl" />
           ) : (
             <button onClick={() => handleSave(true)} disabled={submitting}
               className="py-[7px] bg-blue-500 text-white rounded-xl text-sm font-semibold active:scale-95 transition-transform disabled:opacity-50">
-              再记
+              {t('addAgain')}
             </button>
           )}
 
@@ -322,7 +324,7 @@ export default function AddTransaction() {
           {/* Save/update spans 2 rows */}
           <button onClick={() => handleSave(false)} disabled={submitting}
             className="row-span-2 bg-red-500 text-white rounded-xl text-[15px] font-semibold active:scale-95 transition-transform disabled:opacity-50">
-            {submitting ? '…' : editTx ? '更新' : '保存'}
+            {submitting ? '…' : editTx ? t('update') : t('save')}
           </button>
 
           <button onClick={() => numPress('0')}

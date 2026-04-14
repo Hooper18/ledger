@@ -4,12 +4,9 @@ import { useNavigate } from 'react-router-dom'
 import { X, Edit2, Trash2 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useCurrency } from '../contexts/CurrencyContext'
+import { useLanguage } from '../contexts/LanguageContext'
 import { CURRENCY_SYMBOLS } from '../types'
 import type { TxDetail, Currency } from '../types'
-
-const TYPE_LABELS: Record<string, string> = {
-  expense: '支出', income: '收入', transfer: '转账',
-}
 
 interface Props {
   tx: TxDetail
@@ -21,6 +18,7 @@ interface Props {
 export default function TransactionSheet({ tx, displayCurrency, onClose, onDeleted }: Props) {
   const navigate = useNavigate()
   const { rates } = useCurrency()
+  const { t } = useLanguage()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -38,6 +36,8 @@ export default function TransactionSheet({ tx, displayCurrency, onClose, onDelet
   const converted  = convertTo(tx.amount, tx.currency)
   const isExpense  = tx.type === 'expense'
   const isIncome   = tx.type === 'income'
+
+  const typeLabel = tx.type === 'expense' ? t('expense') : tx.type === 'income' ? t('income') : t('transfer')
 
   async function handleDelete() {
     setDeleting(true)
@@ -64,7 +64,7 @@ export default function TransactionSheet({ tx, displayCurrency, onClose, onDelet
           </div>
           {/* Header */}
           <div className="flex items-center justify-between px-4 pb-3">
-            <span className="text-base font-semibold text-gray-800">交易详情</span>
+            <span className="text-base font-semibold text-gray-800">{t('txDetail')}</span>
             <button onClick={onClose} className="p-1.5 rounded-full hover:bg-gray-100">
               <X size={18} className="text-gray-500" />
             </button>
@@ -78,22 +78,22 @@ export default function TransactionSheet({ tx, displayCurrency, onClose, onDelet
             <div className="w-14 h-14 rounded-full bg-white shadow-sm flex items-center justify-center text-3xl mb-2">
               {tx.categories?.icon ?? '📦'}
             </div>
-            <p className="text-sm text-gray-500 mb-1">{tx.categories?.name ?? '未分类'}</p>
+            <p className="text-sm text-gray-500 mb-1">{tx.categories?.name ?? t('uncategorized')}</p>
             <p className={`text-3xl font-bold ${isExpense ? 'text-red-500' : isIncome ? 'text-green-500' : 'text-blue-500'}`}>
               {isExpense ? '-' : isIncome ? '+' : ''}{dispSymbol} {fmt(converted)}
             </p>
             {tx.currency !== displayCurrency && (
-              <p className="text-xs text-gray-400 mt-1">原始：{origSymbol} {fmt(tx.amount)}</p>
+              <p className="text-xs text-gray-400 mt-1">{t('originalLabel')}{origSymbol} {fmt(tx.amount)}</p>
             )}
           </div>
 
           {/* Detail rows */}
           <div className="mx-4 mb-4 border border-gray-100 rounded-xl overflow-hidden">
             {[
-              { label: '类型', value: TYPE_LABELS[tx.type] ?? tx.type },
-              { label: '货币', value: `${origSymbol} ${tx.currency}` },
-              { label: '日期', value: tx.date },
-              { label: '备注', value: tx.description || '—' },
+              { label: t('typeLabel'),     value: typeLabel },
+              { label: t('currencyLabel'), value: `${origSymbol} ${tx.currency}` },
+              { label: t('dateLabel'),     value: tx.date },
+              { label: t('noteLabel'),     value: tx.description || '—' },
             ].map((row, i) => (
               <div key={row.label}
                 className={`flex justify-between items-center px-4 py-3 ${i > 0 ? 'border-t border-gray-50' : ''}`}>
@@ -111,13 +111,13 @@ export default function TransactionSheet({ tx, displayCurrency, onClose, onDelet
               onClick={() => navigate('/add', { state: { tx } })}
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-blue-50 text-blue-500 rounded-xl font-semibold text-sm active:bg-blue-100 transition-colors"
             >
-              <Edit2 size={15} /> 编辑
+              <Edit2 size={15} /> {t('edit')}
             </button>
             <button
               onClick={() => setConfirmDelete(true)}
               className="flex-1 flex items-center justify-center gap-2 py-3 bg-red-50 text-red-500 rounded-xl font-semibold text-sm active:bg-red-100 transition-colors"
             >
-              <Trash2 size={15} /> 删除
+              <Trash2 size={15} /> {t('delete')}
             </button>
           </div>
         </div>
@@ -130,21 +130,21 @@ export default function TransactionSheet({ tx, displayCurrency, onClose, onDelet
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-8">
             <div className="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-xl">
               <div className="text-4xl mb-3">🗑️</div>
-              <h3 className="text-base font-semibold text-gray-800 mb-1">确认删除</h3>
-              <p className="text-sm text-gray-500 mb-5">此操作无法撤销，确定要删除这条记录吗？</p>
+              <h3 className="text-base font-semibold text-gray-800 mb-1">{t('confirmDelete')}</h3>
+              <p className="text-sm text-gray-500 mb-5">{t('confirmDeleteMsg')}</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setConfirmDelete(false)}
                   className="flex-1 py-2.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-semibold"
                 >
-                  取消
+                  {t('cancel')}
                 </button>
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
                   className="flex-1 py-2.5 bg-red-500 text-white rounded-xl text-sm font-semibold disabled:opacity-50"
                 >
-                  {deleting ? '删除中…' : '确认删除'}
+                  {deleting ? t('deleting') : t('confirmDelete')}
                 </button>
               </div>
             </div>

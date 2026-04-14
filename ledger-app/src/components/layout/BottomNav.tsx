@@ -1,16 +1,18 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { Home, PlusCircle, CalendarDays, BarChart2, Settings } from 'lucide-react'
-
-const tabs = [
-  { path: '/', label: '首页', Icon: Home },
-  { path: '/calendar', label: '日历', Icon: CalendarDays },
-  { path: '/add', label: '', Icon: PlusCircle, isCTA: true },
-  { path: '/charts', label: '统计', Icon: BarChart2 },
-  { path: '/settings', label: '设置', Icon: Settings },
-]
+import { useLanguage } from '../../contexts/LanguageContext'
 
 export default function BottomNav() {
   const navigate = useNavigate()
+  const { t } = useLanguage()
+
+  const tabs = [
+    { path: '/', label: t('navHome'), Icon: Home },
+    { path: '/calendar', label: t('navCalendar'), Icon: CalendarDays },
+    { path: '/add', label: '', Icon: PlusCircle, isCTA: true },
+    { path: '/charts', label: t('navStats'), Icon: BarChart2 },
+    { path: '/settings', label: t('navSettings'), Icon: Settings },
+  ]
 
   return (
     <nav className="shrink-0 w-full bg-white border-t border-gray-100 safe-bottom z-10">
@@ -22,7 +24,7 @@ export default function BottomNav() {
                 <button
                   onClick={() => navigate('/add')}
                   className="w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-lg shadow-primary/40 active:scale-95 transition-transform"
-                  aria-label="记一笔"
+                  aria-label={t('addTx')}
                 >
                   <Icon size={28} color="white" strokeWidth={2} />
                 </button>

@@ -3,11 +3,12 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
+import { useLanguage } from '../contexts/LanguageContext'
 import { CURRENCY_SYMBOLS } from '../types'
 import type { Currency, TxDetail } from '../types'
+import type { TranslationKey } from '../lib/i18n'
 
 const LS_KEY = 'ledger_display_currency'
-const WEEKDAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
 
 /** Returns a flat array of day numbers (null = padding cell) for the month grid */
 function buildCalendarDays(year: number, month: number): (number | null)[] {
@@ -24,6 +25,7 @@ function pad2(n: number) { return String(n).padStart(2, '0') }
 export default function Calendar() {
   const { user } = useAuth()
   const { baseCurrency, rates } = useCurrency()
+  const { t } = useLanguage()
 
   const displayCurrency = (localStorage.getItem(LS_KEY) as Currency) ?? 'CNY'
 
@@ -102,6 +104,8 @@ export default function Calendar() {
   const calDays  = buildCalendarDays(year, month)
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
 
+  const calHeaders = [0, 1, 2, 3, 4, 5, 6].map(i => t(`calDay${i}` as TranslationKey))
+
   return (
     <div className="flex flex-col h-full bg-gray-50">
 
@@ -112,7 +116,7 @@ export default function Calendar() {
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center active:bg-gray-200">
             <ChevronLeft size={18} className="text-gray-600" />
           </button>
-          <span className="text-base font-bold text-gray-800">{year}年{month}月</span>
+          <span className="text-base font-bold text-gray-800">{t('yearMonthFmt', { year, month })}</span>
           <button onClick={() => changeMonth(1)} disabled={isCurrentMonth}
             className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center active:bg-gray-200 disabled:opacity-30">
             <ChevronRight size={18} className="text-gray-600" />
@@ -125,8 +129,8 @@ export default function Calendar() {
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           {/* Weekday headers */}
           <div className="grid grid-cols-7 border-b border-gray-100">
-            {WEEKDAY_LABELS.map((d, i) => (
-              <div key={d} className={`py-2 text-center text-xs font-medium ${
+            {calHeaders.map((d, i) => (
+              <div key={i} className={`py-2 text-center text-xs font-medium ${
                 i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-400'
               }`}>
                 {d}
@@ -184,12 +188,12 @@ export default function Calendar() {
           <div className="mt-2 bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="grid grid-cols-3 divide-x divide-gray-100">
               {[
-                { label: '支出', value: Object.values(byDate).reduce((s, d) => s + d.expense, 0), color: 'text-red-500' },
-                { label: '收入', value: Object.values(byDate).reduce((s, d) => s + d.income,   0), color: 'text-green-500' },
-                { label: '结余', value: Object.values(byDate).reduce((s, d) => s + d.income - d.expense, 0), color: 'text-blue-500' },
+                { labelKey: 'expense' as TranslationKey, value: Object.values(byDate).reduce((s, d) => s + d.expense, 0), color: 'text-red-500' },
+                { labelKey: 'income'  as TranslationKey, value: Object.values(byDate).reduce((s, d) => s + d.income,   0), color: 'text-green-500' },
+                { labelKey: 'balance' as TranslationKey, value: Object.values(byDate).reduce((s, d) => s + d.income - d.expense, 0), color: 'text-blue-500' },
               ].map(item => (
-                <div key={item.label} className="flex flex-col items-center py-3">
-                  <span className="text-xs text-gray-400 mb-1">{item.label}</span>
+                <div key={item.labelKey} className="flex flex-col items-center py-3">
+                  <span className="text-xs text-gray-400 mb-1">{t(item.labelKey)}</span>
                   <span className={`text-sm font-bold ${item.color}`}>{symbol} {fmt(Math.abs(item.value))}</span>
                 </div>
               ))}
@@ -206,19 +210,18 @@ export default function Calendar() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-gray-800">
-                  {new Date(selectedDate + 'T00:00:00').getMonth() + 1}月
-                  {new Date(selectedDate + 'T00:00:00').getDate()}日
+                  {new Date(selectedDate + 'T00:00:00').getMonth() + 1}/{new Date(selectedDate + 'T00:00:00').getDate()}
                 </span>
                 <span className="text-xs text-gray-400">
-                  {WEEKDAY_LABELS[new Date(selectedDate + 'T00:00:00').getDay()]}
+                  {t(`weekday${new Date(selectedDate + 'T00:00:00').getDay()}` as TranslationKey)}
                 </span>
               </div>
               <div className="flex gap-3">
                 {selectedSummary && selectedSummary.expense > 0 && (
-                  <span className="text-xs text-red-500">支出 {symbol} {fmt(selectedSummary.expense)}</span>
+                  <span className="text-xs text-red-500">{t('expense')} {symbol} {fmt(selectedSummary.expense)}</span>
                 )}
                 {selectedSummary && selectedSummary.income > 0 && (
-                  <span className="text-xs text-green-500">收入 {symbol} {fmt(selectedSummary.income)}</span>
+                  <span className="text-xs text-green-500">{t('income')} {symbol} {fmt(selectedSummary.income)}</span>
                 )}
               </div>
             </div>
@@ -227,7 +230,7 @@ export default function Calendar() {
             {!selectedSummary || selectedSummary.txList.length === 0 ? (
               <div className="py-8 flex flex-col items-center text-gray-400 gap-1">
                 <span className="text-2xl">🗒️</span>
-                <p className="text-sm">当天没有记录</p>
+                <p className="text-sm">{t('noRecordsForDay')}</p>
               </div>
             ) : (
               selectedSummary.txList.map(tx => {
@@ -242,7 +245,7 @@ export default function Calendar() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-800 truncate">
-                        {tx.categories?.name ?? '未分类'}
+                        {tx.categories?.name ?? t('uncategorized')}
                       </p>
                       {tx.description && (
                         <p className="text-xs text-gray-400 truncate">{tx.description}</p>

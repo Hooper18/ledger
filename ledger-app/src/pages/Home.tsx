@@ -4,24 +4,14 @@ import { ChevronLeft, ChevronRight, ChevronDown, Search, SlidersHorizontal, X } 
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
+import { useLanguage } from '../contexts/LanguageContext'
 import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from '../types'
 import type { Currency, TxDetail, TransactionType } from '../types'
+import type { TranslationKey } from '../lib/i18n'
 import TransactionSheet from '../components/TransactionSheet'
 
 const DISPLAY_CURRENCIES = SUPPORTED_CURRENCIES
 const LS_KEY = 'ledger_display_currency'
-const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-
-function formatDateLabel(dateStr: string): string {
-  const now = new Date()
-  const todayStr = now.toISOString().split('T')[0]
-  const yest = new Date(now); yest.setDate(now.getDate() - 1)
-  const yestStr = yest.toISOString().split('T')[0]
-  if (dateStr === todayStr) return '今天'
-  if (dateStr === yestStr)  return '昨天'
-  const d = new Date(dateStr + 'T00:00:00')
-  return `${d.getMonth() + 1}月${d.getDate()}日 ${WEEKDAYS[d.getDay()]}`
-}
 
 interface FilterState {
   keyword: string
@@ -41,15 +31,29 @@ function isFilterActive(f: FilterState) {
     f.types.size > 0 || f.categoryIds.size > 0
 }
 
-const TX_TYPES: { value: TransactionType; label: string }[] = [
-  { value: 'expense',  label: '支出' },
-  { value: 'income',   label: '收入' },
-  { value: 'transfer', label: '转账' },
-]
-
 export default function Home() {
 const { user } = useAuth()
   const { baseCurrency, rates, ratesLoading } = useCurrency()
+  const { t, lang } = useLanguage()
+
+  const TX_TYPES: { value: TransactionType; label: string }[] = [
+    { value: 'expense',  label: t('expense') },
+    { value: 'income',   label: t('income') },
+    { value: 'transfer', label: t('transfer') },
+  ]
+
+  function formatDateLabel(dateStr: string): string {
+    const now = new Date()
+    const todayStr = now.toISOString().split('T')[0]
+    const yest = new Date(now); yest.setDate(now.getDate() - 1)
+    const yestStr = yest.toISOString().split('T')[0]
+    if (dateStr === todayStr) return t('today')
+    if (dateStr === yestStr)  return t('yesterday')
+    const d = new Date(dateStr + 'T00:00:00')
+    const wd = t(`weekday${d.getDay()}` as TranslationKey)
+    if (lang === 'zh') return `${d.getMonth() + 1}月${d.getDate()}日 ${wd}`
+    return `${d.getMonth() + 1}/${d.getDate()} ${wd}`
+  }
 
   // ── display currency ──
   const [displayCurrency, setDisplayCurrency] = useState<Currency>(() =>
@@ -186,10 +190,10 @@ const { user } = useAuth()
     setShowFilter(false)
   }
 
-  function toggleDraftType(t: TransactionType) {
+  function toggleDraftType(type: TransactionType) {
     setDraft(prev => {
       const s = new Set(prev.types)
-      s.has(t) ? s.delete(t) : s.add(t)
+      s.has(type) ? s.delete(type) : s.add(type)
       return { ...prev, types: s }
     })
   }
@@ -235,6 +239,8 @@ const { user } = useAuth()
   const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a))
   const isCurrentMonth = year === now.getFullYear() && month === now.getMonth() + 1
 
+  const txCountLabel = t('txCountSuffix') ? `${filtered.length} ${t('txCountSuffix')}` : String(filtered.length)
+
   return (
     <div className="flex flex-col h-full bg-gray-50">
 
@@ -251,14 +257,14 @@ const { user } = useAuth()
             className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center active:bg-white/30">
             <ChevronLeft size={18} />
           </button>
-          <span className="text-base font-semibold">{year}年{month}月</span>
+          <span className="text-base font-semibold">{t('yearMonthFmt', { year, month })}</span>
           <button onClick={() => changeMonth(1)} disabled={isCurrentMonth}
             className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center active:bg-white/30 disabled:opacity-30">
             <ChevronRight size={18} />
           </button>
         </div>
 
-        <p className="text-xs text-white/70 mb-1">本月支出</p>
+        <p className="text-xs text-white/70 mb-1">{t('monthlyExpense')}</p>
 
         <div className="flex items-baseline gap-2 mb-4">
           <div className="relative" ref={pickerRef}>
@@ -282,12 +288,12 @@ const { user } = useAuth()
 
         <div className="flex gap-8">
           <div>
-            <p className="text-xs text-white/70 mb-0.5">收入</p>
+            <p className="text-xs text-white/70 mb-0.5">{t('income')}</p>
             <p className="text-base font-semibold">{symbol} {fmt(incomeTotal)}</p>
           </div>
           <div className="w-px bg-red-400/40" />
           <div>
-            <p className="text-xs text-white/70 mb-0.5">结余</p>
+            <p className="text-xs text-white/70 mb-0.5">{t('balance')}</p>
             <p className={`text-base font-semibold ${balance < 0 ? 'text-white/60' : ''}`}>
               {symbol} {fmt(balance)}
             </p>
@@ -302,9 +308,9 @@ const { user } = useAuth()
           return (
             <div className="mt-3 pt-3 border-t border-white/30">
               <div className="flex justify-between text-xs text-white/70 mb-1.5">
-                <span>月度预算</span>
+                <span>{t('monthlyBudget')}</span>
                 <span className={isOver ? 'text-white font-semibold' : ''}>
-                  {isOver ? '⚠ 超出预算' : `${Math.round(pct)}% 已使用`}
+                  {isOver ? t('overBudget') : t('budgetPctUsed', { pct: Math.round(pct) })}
                 </span>
               </div>
               <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
@@ -323,8 +329,8 @@ const { user } = useAuth()
 
         {/* List header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-          <span className="text-sm font-semibold text-gray-700">账单明细</span>
-          <span className="text-xs text-gray-400">{filtered.length} 笔</span>
+          <span className="text-sm font-semibold text-gray-700">{t('billDetail')}</span>
+          <span className="text-xs text-gray-400">{txCountLabel}</span>
         </div>
 
         {/* ── Search bar ── */}
@@ -335,7 +341,7 @@ const { user } = useAuth()
               type="text"
               value={keyword}
               onChange={e => setKeyword(e.target.value)}
-              placeholder="搜索备注关键词..."
+              placeholder={t('searchPlaceholder')}
               className="flex-1 text-sm bg-transparent outline-none text-gray-700 placeholder:text-gray-400"
             />
             {keyword && (
@@ -366,18 +372,18 @@ const { user } = useAuth()
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-gray-400">
               <span className="text-4xl mb-3">{transactions.length === 0 ? '📋' : '🔍'}</span>
-              <p className="text-sm">{transactions.length === 0 ? '本月暂无记录' : '没有符合条件的记录'}</p>
+              <p className="text-sm">{transactions.length === 0 ? t('noRecords') : t('noFilterResults')}</p>
               {transactions.length === 0
-                ? <p className="text-xs mt-1">点击底部 + 开始记账吧</p>
-                : <button onClick={resetFilter} className="text-xs mt-2 text-[#e53935]">清除筛选</button>
+                ? <p className="text-xs mt-1">{t('noRecordsHint')}</p>
+                : <button onClick={resetFilter} className="text-xs mt-2 text-[#e53935]">{t('clearFilter')}</button>
               }
             </div>
           ) : (
             sortedDates.map(date => {
               const dayTxs = grouped[date]
               const dayExpense = dayTxs
-                .filter(t => t.type === 'expense')
-                .reduce((s, t) => s + convertTo(t.amount, t.currency), 0)
+                .filter(tx => tx.type === 'expense')
+                .reduce((s, tx) => s + convertTo(tx.amount, tx.currency), 0)
 
               return (
                 <div key={date}>
@@ -403,7 +409,7 @@ const { user } = useAuth()
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-800 truncate">
-                            {tx.categories?.name ?? '未分类'}
+                            {tx.categories?.name ?? t('uncategorized')}
                           </p>
                           {tx.description && (
                             <p className="text-xs text-gray-400 truncate">{tx.description}</p>
@@ -477,7 +483,7 @@ const { user } = useAuth()
 
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
-              <h2 className="text-base font-semibold text-gray-800">筛选</h2>
+              <h2 className="text-base font-semibold text-gray-800">{t('filterTitle')}</h2>
               <button onClick={() => setShowFilter(false)} className="p-1.5 rounded-full hover:bg-gray-100">
                 <X size={18} className="text-gray-500" />
               </button>
@@ -488,7 +494,7 @@ const { user } = useAuth()
 
               {/* Date range */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">日期范围</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{t('filterDateRange')}</p>
                 <div className="flex items-center gap-2">
                   <input
                     type="date"
@@ -497,7 +503,7 @@ const { user } = useAuth()
                     onChange={e => setDraft(p => ({ ...p, dateFrom: e.target.value }))}
                     className="flex-1 px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-sm outline-none focus:border-[#e53935] transition-colors"
                   />
-                  <span className="text-gray-400 text-sm shrink-0">至</span>
+                  <span className="text-gray-400 text-sm shrink-0">{t('filterTo')}</span>
                   <input
                     type="date"
                     value={draft.dateTo}
@@ -510,7 +516,7 @@ const { user } = useAuth()
 
               {/* Type */}
               <div>
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">类型</p>
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{t('filterType')}</p>
                 <div className="flex gap-2">
                   {TX_TYPES.map(({ value, label }) => {
                     const on = draft.types.has(value)
@@ -529,7 +535,7 @@ const { user } = useAuth()
               {/* Category */}
               {uniqueCats.length > 0 && (
                 <div>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">分类</p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">{t('filterCategory')}</p>
                   <div className="grid grid-cols-5 gap-1">
                     {uniqueCats.map(cat => {
                       const on = draft.categoryIds.has(cat.id)
@@ -558,11 +564,11 @@ const { user } = useAuth()
             <div className="shrink-0 border-t border-gray-100 px-4 pt-3 pb-8 flex gap-3">
               <button onClick={resetFilter}
                 className="flex-1 py-3 bg-gray-100 text-gray-600 rounded-xl text-sm font-semibold active:bg-gray-200 transition-colors">
-                重置
+                {t('filterReset')}
               </button>
               <button onClick={confirmFilter}
                 className="flex-1 py-3 bg-[#e53935] text-white rounded-xl text-sm font-semibold active:opacity-90 transition-opacity">
-                确认筛选
+                {t('filterConfirm')}
               </button>
             </div>
           </div>
