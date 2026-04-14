@@ -15,6 +15,13 @@ import {
 
 interface Category { id: string; name: string; type: string; icon: string }
 
+function localDateStr(d: Date = new Date()): string {
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+}
+
 const ALL_CURRENCIES: Currency[] = ['MYR', 'CNY', 'USD', 'SGD', 'HKD', 'JPY', 'EUR', 'GBP', 'THB', 'TWD', 'AUD', 'KHR']
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -43,7 +50,7 @@ export default function AddTransaction() {
   const [type, setType]         = useState<TransactionType>((editTx?.type as TransactionType) ?? 'expense')
   const [amount, setAmount]     = useState(editTx ? String(editTx.amount) : '0')
   const [selectedCategory, setSelected] = useState(editTx?.category_id ?? '')
-  const [date, setDate]         = useState(editTx?.date ?? new Date().toISOString().split('T')[0])
+  const [date, setDate]         = useState(editTx?.date ?? localDateStr())
   const [note, setNote]         = useState(editTx?.description ?? '')
   const [currency, setCurrency] = useState<Currency>((editTx?.currency as Currency) ?? defaultCurrency)
   const [categories, setCategories] = useState<Category[]>([])
@@ -54,7 +61,7 @@ export default function AddTransaction() {
   // Date quick-select
   function dateOffset(offset: number) {
     const d = new Date(); d.setDate(d.getDate() + offset)
-    return d.toISOString().split('T')[0]
+    return localDateStr(d)
   }
   const today = dateOffset(0)
   const yesterday = dateOffset(-1)
