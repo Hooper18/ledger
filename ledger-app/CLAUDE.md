@@ -41,6 +41,11 @@
 - [x] 导航栏遮挡修复
 - [x] 记一笔键盘高度压缩
 - [x] 首页 header 改为风景图背景（图片：public/images/header-bg.jpg）
+- [x] 货币选择器改为完整列表并支持滚动（ALL_CURRENCIES，12种货币）
+- [x] 日期时区修复：改用本地时区 localDateStr() 替代 toISOString()
+- [x] PWA图标更新：红底白字"记账"，含192/512/maskable三个PNG
+- [x] 货币定义统一：所有币种集中在 types/index.ts，AddTransaction.tsx 不再重复定义
+- [x] 新增MOP澳门元
 
 ## UI 修复记录
 - 删除首页底部"+ 记一笔"文字按钮（保留底部导航栏红色"+"圆形按钮）
@@ -53,6 +58,15 @@
 
 ## GitHub
 Hooper18/ledger（main 分支）
+
+## 如何添加新币种
+只需修改 types/index.ts 一个文件，共4处：
+1. Currency 类型：补充 | 'XXX'
+2. SUPPORTED_CURRENCIES 数组：补充 'XXX'
+3. CURRENCY_SYMBOLS：补充 XXX: '符号'
+4. CURRENCY_LABELS：补充 XXX: '中文名 XXX'
+
+修改后全局自动生效，无需改动其他文件。
 
 ## 参考
 离线版源码：D:\VscodeProject\ClaudeCodeTest\finance-app.html
