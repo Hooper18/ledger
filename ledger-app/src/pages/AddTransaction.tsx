@@ -11,6 +11,8 @@ import {
   INCOME_CATEGORIES,
   TRANSFER_CATEGORIES,
   CATEGORY_ICONS,
+  SUPPORTED_CURRENCIES,
+  CURRENCY_SYMBOLS,
 } from '../types'
 
 interface Category { id: string; name: string; type: string; icon: string }
@@ -22,13 +24,6 @@ function localDateStr(d: Date = new Date()): string {
   return `${y}-${m}-${day}`
 }
 
-const ALL_CURRENCIES: Currency[] = ['MYR', 'CNY', 'USD', 'SGD', 'HKD', 'JPY', 'EUR', 'GBP', 'THB', 'TWD', 'AUD', 'KHR']
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  MYR: 'RM', CNY: '¥', USD: '$', SGD: 'S$',
-  HKD: 'HK$', JPY: '¥', EUR: '€', GBP: '£',
-  THB: '฿', KHR: '₫', TWD: 'NT$', AUD: 'A$',
-}
 
 function buildFallback(type: TransactionType): Category[] {
   const names =
@@ -263,7 +258,7 @@ export default function AddTransaction() {
               </button>
               {showCurrencyPicker && (
                 <div className="absolute right-0 bottom-full mb-1 bg-white border border-gray-100 rounded-xl shadow-lg z-20 min-w-[80px] max-h-[180px] overflow-y-auto">
-                  {ALL_CURRENCIES.map(c => (
+                  {SUPPORTED_CURRENCIES.map(c => (
                     <button key={c} onClick={() => { setCurrency(c); setShowCPicker(false) }}
                       className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${
                         currency === c ? 'text-red-500 font-semibold' : 'text-gray-700'

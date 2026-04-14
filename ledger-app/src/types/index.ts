@@ -2,7 +2,7 @@ export type TransactionType = 'expense' | 'income' | 'transfer'
 
 export type Currency =
   | 'MYR' | 'SGD' | 'USD' | 'CNY' | 'HKD'
-  | 'JPY' | 'EUR' | 'GBP' | 'THB' | 'KHR' | 'TWD' | 'AUD'
+  | 'JPY' | 'EUR' | 'GBP' | 'THB' | 'KHR' | 'TWD' | 'AUD' | 'MOP'
 
 export interface Transaction {
   id: string
@@ -38,7 +38,7 @@ export interface Budget {
 
 export const SUPPORTED_CURRENCIES: Currency[] = [
   'CNY', 'MYR', 'SGD', 'USD', 'HKD',
-  'JPY', 'EUR', 'GBP', 'THB', 'KHR', 'TWD', 'AUD',
+  'JPY', 'EUR', 'GBP', 'THB', 'KHR', 'TWD', 'AUD', 'MOP',
 ]
 
 export interface TxDetail {
@@ -55,7 +55,7 @@ export interface TxDetail {
 
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   CNY: '¥', MYR: 'RM', SGD: 'S$', USD: '$', HKD: 'HK$',
-  JPY: '¥', EUR: '€', GBP: '£', THB: '฿', KHR: '₫', TWD: 'NT$', AUD: 'A$',
+  JPY: '¥', EUR: '€', GBP: '£', THB: '฿', KHR: '₫', TWD: 'NT$', AUD: 'A$', MOP: 'MOP$',
 }
 
 export const CURRENCY_LABELS: Record<Currency, string> = {
@@ -71,6 +71,7 @@ export const CURRENCY_LABELS: Record<Currency, string> = {
   KHR: '柬埔寨瑞尔 KHR',
   TWD: '新台币 TWD',
   AUD: '澳元 AUD',
+  MOP: '澳门元 MOP',
 }
 
 export const EXPENSE_CATEGORIES = [
