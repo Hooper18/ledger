@@ -44,9 +44,9 @@ const { user } = useAuth()
 
   function formatDateLabel(dateStr: string): string {
     const now = new Date()
-    const todayStr = now.toISOString().split('T')[0]
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
     const yest = new Date(now); yest.setDate(now.getDate() - 1)
-    const yestStr = yest.toISOString().split('T')[0]
+    const yestStr = `${yest.getFullYear()}-${String(yest.getMonth()+1).padStart(2,'0')}-${String(yest.getDate()).padStart(2,'0')}`
     if (dateStr === todayStr) return t('today')
     if (dateStr === yestStr)  return t('yesterday')
     const d = new Date(dateStr + 'T00:00:00')
