@@ -88,7 +88,6 @@ export default function Budget() {
         .lt('date', end),
     ])
 
-    console.log('[Budget] fetchData budgetsRes:', JSON.stringify(budgetsRes.data), 'error:', JSON.stringify(budgetsRes.error))
     if (catsRes.data)    setCategories(catsRes.data as CategoryRow[])
     if (budgetsRes.data) setBudgets(budgetsRes.data as BudgetRow[])
 
@@ -130,15 +129,10 @@ export default function Budget() {
     setSaving(true)
     const category_id = editing === '' ? null : editing
 
-    console.log('[Budget] saving period:', period, '| category_id:', category_id, '| amount:', amount)
-
     const { data, error } = await supabase.from('budgets').upsert(
       { user_id: user.id, category_id, amount, currency: baseCurrency as string, period } as any,
       { onConflict: 'user_id,period,category_id' },
     ).select()
-
-    console.error('[Budget] error:', JSON.stringify(error))
-    console.log('[Budget] data:', data)
 
     if (error) {
       setSaving(false)
@@ -146,7 +140,6 @@ export default function Budget() {
     }
 
     await fetchData()
-    console.log('[Budget] fetchData done, budgets state will update')
     setSaving(false)
     setEditing(null)
   }
@@ -159,7 +152,6 @@ export default function Budget() {
 
     const { error } = await supabase.from('budgets').delete().eq('id', b.id)
     if (error) {
-      console.error('[Budget] delete error:', error)
       return
     }
     await fetchData()

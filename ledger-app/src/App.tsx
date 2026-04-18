@@ -28,12 +28,8 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user, loading, isRecoverySession } = useAuth()
+  const { user, loading } = useAuth()
   if (loading) return <LoadingScreen />
-
-  if (isRecoverySession && user) {
-    return <Navigate to="/reset-password" replace />
-  }
 
   return (
     <Routes>
