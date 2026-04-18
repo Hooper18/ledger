@@ -91,14 +91,11 @@ const zh = {
   tabDaily: '每日支出',
   tabCategory: '分类占比',
   last6Months: '近6个月收支',
-  dailyChartTitle: '{year}年{month}月每日支出',
-  categoryChartTitle: '{year}年{month}月分类占比',
   noExpenseData: '本月暂无支出记录',
   noIncomeData: '本月暂无收入记录',
 
   // Budget
   budgetTitle: '预算管理',
-  budgetSubtitle: '{year}年{month}月 · {currency}',
   monthlyTotalBudget: '月度总预算',
   budgetLimit: '上限',
   overLimit: '已超出！',
@@ -236,13 +233,10 @@ const en: typeof zh = {
   tabDaily: 'Daily',
   tabCategory: 'Category',
   last6Months: 'Last 6 Months',
-  dailyChartTitle: 'Daily · {month}/{year}',
-  categoryChartTitle: 'Category · {month}/{year}',
   noExpenseData: 'No expenses this month',
   noIncomeData: 'No income this month',
 
   budgetTitle: 'Budget',
-  budgetSubtitle: '{month}/{year} · {currency}',
   monthlyTotalBudget: 'Monthly Budget',
   budgetLimit: 'Limit',
   overLimit: 'Over limit!',
