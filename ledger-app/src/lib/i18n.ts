@@ -151,6 +151,31 @@ const zh = {
   noAccount: '还没有账号？',
   registerNow: '立即注册',
   loginAgreement: '登录即表示你同意我们的服务条款和隐私政策',
+
+  // Forgot password (Auth.tsx forgot mode)
+  forgotPasswordLink: '忘记密码？',
+  forgotPasswordTitle: '重置密码',
+  forgotPasswordDesc: '输入注册邮箱，我们会发送重置链接',
+  forgotSendBtn: '发送重置邮件',
+  forgotSending: '发送中...',
+  forgotEmailSent: '重置邮件已发送，请检查邮箱',
+  forgotBackToLogin: '返回登录',
+  forgotRateLimit: '请求过于频繁，请稍后再试',
+  forgotSendFailed: '发送失败，请稍后再试',
+
+  // Reset password landing page (ResetPassword.tsx)
+  resetPasswordTitle: '设置新密码',
+  resetPasswordDesc: '请输入你的新密码',
+  resetNewPasswordLabel: '新密码',
+  resetNewPasswordPlaceholder: '至少 6 位',
+  resetConfirmPasswordLabel: '确认新密码',
+  resetConfirmPasswordPlaceholder: '再次输入',
+  resetSaveBtn: '保存新密码',
+  resetSaving: '保存中...',
+  resetSuccess: '密码已更新',
+  resetLinkExpired: '重置链接已过期，请重新申请',
+  resetSaveFailed: '保存失败，请重试',
+  resetGoToSignIn: '前往登录页重新申请',
 }
 
 const en: typeof zh = {
@@ -290,6 +315,31 @@ const en: typeof zh = {
   noAccount: "Don't have an account?",
   registerNow: 'Sign Up',
   loginAgreement: 'By signing in you agree to our Terms of Service and Privacy Policy',
+
+  // Forgot password (Auth.tsx forgot mode)
+  forgotPasswordLink: 'Forgot password?',
+  forgotPasswordTitle: 'Reset Password',
+  forgotPasswordDesc: 'Enter your email to receive a reset link',
+  forgotSendBtn: 'Send Reset Email',
+  forgotSending: 'Sending...',
+  forgotEmailSent: 'Reset email sent, please check your inbox',
+  forgotBackToLogin: 'Back to Sign In',
+  forgotRateLimit: 'Too many requests, please try again later',
+  forgotSendFailed: 'Failed to send, please try again',
+
+  // Reset password landing page (ResetPassword.tsx)
+  resetPasswordTitle: 'Set New Password',
+  resetPasswordDesc: 'Please enter your new password',
+  resetNewPasswordLabel: 'New Password',
+  resetNewPasswordPlaceholder: 'At least 6 characters',
+  resetConfirmPasswordLabel: 'Confirm New Password',
+  resetConfirmPasswordPlaceholder: 'Re-enter',
+  resetSaveBtn: 'Save New Password',
+  resetSaving: 'Saving...',
+  resetSuccess: 'Password updated',
+  resetLinkExpired: 'Reset link expired, please request again',
+  resetSaveFailed: 'Failed to save, please try again',
+  resetGoToSignIn: 'Go to sign in page',
 }
 
 export const translations = { zh, en }

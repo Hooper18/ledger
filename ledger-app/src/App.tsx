@@ -10,6 +10,7 @@ import Calendar from './pages/Calendar'
 import Charts from './pages/Charts'
 import Settings from './pages/Settings'
 import Budget from './pages/Budget'
+import ResetPassword from './pages/ResetPassword'
 
 function LoadingScreen() {
   return (
@@ -27,8 +28,12 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 function AppRoutes() {
-  const { user, loading } = useAuth()
+  const { user, loading, isRecoverySession } = useAuth()
   if (loading) return <LoadingScreen />
+
+  if (isRecoverySession && user) {
+    return <Navigate to="/reset-password" replace />
+  }
 
   return (
     <Routes>
@@ -96,6 +101,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )
