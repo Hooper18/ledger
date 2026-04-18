@@ -14,6 +14,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
+import { useLanguage } from '../contexts/LanguageContext'
 import { CURRENCY_SYMBOLS } from '../types'
 import type { Currency, TxDetail } from '../types'
 
@@ -44,6 +45,7 @@ function monthEnd(y: number, m: number) {
 export default function Charts() {
   const { user } = useAuth()
   const { baseCurrency, rates } = useCurrency()
+  const { t, lang } = useLanguage()
 
   const dispCurrency = baseCurrency
   const symbol = CURRENCY_SYMBOLS[dispCurrency as Currency] ?? dispCurrency
@@ -75,6 +77,15 @@ export default function Charts() {
     if (m < 1)  { m = 12; y-- }
     setMonth(m); setYear(y)
   }
+
+  // Locale-aware month-year label: "2026年4月" (zh) / "April 2026" (en)
+  const monthYearLabel = new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric',
+    month: 'long',
+  }).format(new Date(year, month - 1))
+
+  const dailyTitle    = lang === 'zh' ? `${monthYearLabel}${t('tabDaily')}`    : `${t('tabDaily')} · ${monthYearLabel}`
+  const categoryTitle = lang === 'zh' ? `${monthYearLabel}${t('tabCategory')}` : `${t('tabCategory')} · ${monthYearLabel}`
 
   // ── Tab 1: Overview (近6个月) ──────────────────────────────────────────
   type MonthBucket = { month: string; income: number; expense: number }
@@ -156,25 +167,32 @@ export default function Charts() {
     for (const tx of monthlyTxs) {
       if (tx.type !== catType) continue
       const key = tx.category_id
-      if (!map[key]) map[key] = { name: tx.categories?.name ?? '未分类', icon: tx.categories?.icon ?? '📦', total: 0 }
+      if (!map[key]) map[key] = { name: tx.categories?.name ?? t('uncategorized'), icon: tx.categories?.icon ?? '📦', total: 0 }
       map[key].total += cvtTx(tx.amount, tx.currency, tx.exchange_rate)
     }
     return Object.values(map).sort((a, b) => b.total - a.total)
-  }, [monthlyTxs, catType]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [monthlyTxs, catType, lang]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Chart configs ─────────────────────────────────────────────────────
+
+  // X-axis month labels for overview: "1月"/"2月" (zh) or "Jan"/"Feb" (en)
   const overviewChartData = {
-    labels: overview.map(d => `${parseInt(d.month.slice(5))}月`),
+    labels: overview.map(d => {
+      const m = parseInt(d.month.slice(5))
+      const y = parseInt(d.month.slice(0, 4))
+      if (lang === 'zh') return `${m}月`
+      return new Intl.DateTimeFormat('en-US', { month: 'short' }).format(new Date(y, m - 1))
+    }),
     datasets: [
-      { label: '收入', data: overview.map(d => d.income),  backgroundColor: GREEN, borderRadius: 4, barPercentage: 0.7 },
-      { label: '支出', data: overview.map(d => d.expense), backgroundColor: RED,   borderRadius: 4, barPercentage: 0.7 },
+      { label: t('income'),  data: overview.map(d => d.income),  backgroundColor: GREEN, borderRadius: 4, barPercentage: 0.7 },
+      { label: t('expense'), data: overview.map(d => d.expense), backgroundColor: RED,   borderRadius: 4, barPercentage: 0.7 },
     ],
   }
 
   const dailyChartData = {
     labels: dailyData.map(d => String(d.day)),
     datasets: [
-      { label: '支出', data: dailyData.map(d => d.expense), backgroundColor: RED, borderRadius: 3, barPercentage: 0.8 },
+      { label: t('expense'), data: dailyData.map(d => d.expense), backgroundColor: RED, borderRadius: 3, barPercentage: 0.8 },
     ],
   }
 
@@ -244,24 +262,25 @@ export default function Charts() {
     </div>
   )
 
+  // TABS defined inside component so labels use t()
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'overview', label: '月度趋势' },
-    { key: 'daily',    label: '每日支出' },
-    { key: 'category', label: '分类占比' },
+    { key: 'overview', label: t('tabOverview') },
+    { key: 'daily',    label: t('tabDaily') },
+    { key: 'category', label: t('tabCategory') },
   ]
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
       {/* ── Header + Tabs ── */}
       <div className="bg-white px-4 pt-4 pb-0 border-b border-gray-100 shrink-0">
-        <h1 className="text-lg font-bold text-gray-800 mb-3">统计</h1>
+        <h1 className="text-lg font-bold text-gray-800 mb-3">{t('statsTitle')}</h1>
         <div className="flex">
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => setTab(t.key)}
+          {TABS.map(tabItem => (
+            <button key={tabItem.key} onClick={() => setTab(tabItem.key)}
               className={`flex-1 py-2.5 text-sm font-medium border-b-2 transition-colors ${
-                tab === t.key ? 'border-[#e53935] text-[#e53935]' : 'border-transparent text-gray-400'
+                tab === tabItem.key ? 'border-[#e53935] text-[#e53935]' : 'border-transparent text-gray-400'
               }`}>
-              {t.label}
+              {tabItem.label}
             </button>
           ))}
         </div>
@@ -273,10 +292,10 @@ export default function Charts() {
         {/* ── Overview ── */}
         {tab === 'overview' && (
           <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <p className="text-sm font-semibold text-gray-700 mb-4">近6个月收支</p>
+            <p className="text-sm font-semibold text-gray-700 mb-4">{t('last6Months')}</p>
             {overviewLoading ? <Spinner /> : (
               <div className="h-52">
-                <Bar data={overviewChartData} options={barBase} />
+                <Bar key={lang} data={overviewChartData} options={barBase} />
               </div>
             )}
           </div>
@@ -285,15 +304,16 @@ export default function Charts() {
         {/* ── Daily ── */}
         {tab === 'daily' && (
           <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <MonthNav title={`${year}年${month}月每日支出`} />
+            <MonthNav title={dailyTitle} />
             {monthlyLoading ? <Spinner /> : dailyData.every(d => d.expense === 0) ? (
               <div className="h-48 flex flex-col items-center justify-center text-gray-400 gap-2">
                 <span className="text-3xl">📊</span>
-                <p className="text-sm">本月暂无支出记录</p>
+                <p className="text-sm">{t('noExpenseData')}</p>
               </div>
             ) : (
               <div className="h-52">
                 <Bar
+                  key={lang}
                   data={dailyChartData}
                   options={{ ...barBase, plugins: { ...barBase.plugins, legend: { display: false } } }}
                 />
@@ -305,18 +325,18 @@ export default function Charts() {
         {/* ── Category ── */}
         {tab === 'category' && (
           <div className="bg-white rounded-2xl p-4 shadow-sm">
-            <MonthNav title={`${year}年${month}月分类占比`} />
+            <MonthNav title={categoryTitle} />
 
             {/* income / expense toggle */}
             <div className="flex bg-gray-100 rounded-xl p-1 mb-4">
-              {(['expense', 'income'] as const).map(t => (
-                <button key={t} onClick={() => setCatType(t)}
+              {(['expense', 'income'] as const).map(txType => (
+                <button key={txType} onClick={() => setCatType(txType)}
                   className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${
-                    catType === t
-                      ? t === 'expense' ? 'bg-[#e53935] text-white shadow-sm' : 'bg-green-500 text-white shadow-sm'
+                    catType === txType
+                      ? txType === 'expense' ? 'bg-[#e53935] text-white shadow-sm' : 'bg-green-500 text-white shadow-sm'
                       : 'text-gray-500'
                   }`}>
-                  {t === 'expense' ? '支出' : '收入'}
+                  {txType === 'expense' ? t('expense') : t('income')}
                 </button>
               ))}
             </div>
@@ -324,12 +344,12 @@ export default function Charts() {
             {monthlyLoading ? <Spinner /> : catData.length === 0 ? (
               <div className="h-48 flex flex-col items-center justify-center text-gray-400 gap-2">
                 <span className="text-3xl">🍩</span>
-                <p className="text-sm">本月暂无{catType === 'expense' ? '支出' : '收入'}记录</p>
+                <p className="text-sm">{catType === 'expense' ? t('noExpenseData') : t('noIncomeData')}</p>
               </div>
             ) : (
               <>
                 <div className="h-52 mb-4">
-                  <Pie data={pieChartData} options={pieOptions} />
+                  <Pie key={lang} data={pieChartData} options={pieOptions} />
                 </div>
 
                 {/* Legend list with amounts */}

@@ -5,6 +5,7 @@ import { ChevronLeft, Pencil, Plus, X } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
+import { useLanguage } from '../contexts/LanguageContext'
 import { CURRENCY_SYMBOLS } from '../types'
 import type { Currency } from '../types'
 
@@ -25,6 +26,7 @@ export default function Budget() {
   const navigate = useNavigate()
   const { user } = useAuth()
   const { baseCurrency, rates } = useCurrency()
+  const { t, lang } = useLanguage()
 
   const now   = new Date()
   const year  = now.getFullYear()
@@ -43,6 +45,12 @@ export default function Budget() {
   const [saving, setSaving]       = useState(false)
 
   const symbol = CURRENCY_SYMBOLS[baseCurrency as Currency] ?? baseCurrency
+
+  // Locale-aware month-year label: "2026年4月" (zh) / "April 2026" (en)
+  const monthYearLabel = new Intl.DateTimeFormat(lang === 'zh' ? 'zh-CN' : 'en-US', {
+    year: 'numeric',
+    month: 'long',
+  }).format(new Date(year, month - 1))
 
   function convertTo(amount: number, from: string): number {
     if (from === baseCurrency) return amount
@@ -179,8 +187,8 @@ export default function Budget() {
   // For delete button visibility and sheet title
   const editingCategoryId: string | null = editing === '' ? null : editing
   const editingCatName = editing === ''
-    ? '月度总预算'
-    : categories.find(c => c.id === editing)?.name ?? '分类预算'
+    ? t('monthlyTotalBudget')
+    : categories.find(c => c.id === editing)?.name ?? t('categoryBudget')
 
   return (
     <div className="flex flex-col h-full bg-gray-50">
@@ -192,8 +200,8 @@ export default function Budget() {
             <ChevronLeft size={22} className="text-gray-600" />
           </button>
           <div>
-            <h1 className="text-lg font-bold text-gray-800">预算管理</h1>
-            <p className="text-xs text-gray-400">{year}年{month}月 · {baseCurrency}</p>
+            <h1 className="text-lg font-bold text-gray-800">{t('budgetTitle')}</h1>
+            <p className="text-xs text-gray-400">{monthYearLabel} · {baseCurrency}</p>
           </div>
         </div>
       </div>
@@ -207,7 +215,7 @@ export default function Budget() {
           <>
             {/* ── Total budget ── */}
             <div className="mx-4 mt-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">月度总预算</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">{t('monthlyTotalBudget')}</p>
               <div className="bg-white rounded-2xl shadow-sm p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -216,8 +224,8 @@ export default function Budget() {
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">
                       {totalBudgetAmt !== null
-                        ? <>上限 {symbol} {fmt(totalBudgetAmt)}{totalIsOver && <span className="text-[#e53935] font-semibold ml-1.5">已超出！</span>}</>
-                        : '尚未设置总预算'
+                        ? <>{t('budgetLimit')} {symbol} {fmt(totalBudgetAmt)}{totalIsOver && <span className="text-[#e53935] font-semibold ml-1.5">{t('overLimit')}</span>}</>
+                        : t('noBudgetSet')
                       }
                     </p>
                   </div>
@@ -227,7 +235,7 @@ export default function Budget() {
                   >
                     <Pencil size={12} className="text-gray-500" />
                     <span className="text-xs text-gray-600 font-medium">
-                      {totalBudgetAmt !== null ? '编辑' : '设置'}
+                      {totalBudgetAmt !== null ? t('edit') : t('set')}
                     </span>
                   </button>
                 </div>
@@ -241,10 +249,10 @@ export default function Budget() {
                       />
                     </div>
                     <div className="flex justify-between text-xs text-gray-400 mt-1.5">
-                      <span>{Math.round(totalPct)}% 已使用</span>
+                      <span>{t('pctUsed', { pct: Math.round(totalPct) })}</span>
                       {totalIsOver
-                        ? <span className="text-[#e53935] font-medium">超出 {symbol} {fmt(totalSpent - totalBudgetAmt)}</span>
-                        : <span>剩余 {symbol} {fmt(totalBudgetAmt - totalSpent)}</span>
+                        ? <span className="text-[#e53935] font-medium">{t('over')} {symbol} {fmt(totalSpent - totalBudgetAmt)}</span>
+                        : <span>{t('remaining')} {symbol} {fmt(totalBudgetAmt - totalSpent)}</span>
                       }
                     </div>
                   </>
@@ -254,7 +262,7 @@ export default function Budget() {
 
             {/* ── Category budgets ── */}
             <div className="mx-4 mt-5">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">分类预算</p>
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">{t('categoryBudget')}</p>
 
               {withBudgetOrSpending.length > 0 ? (
                 <div className="bg-white rounded-2xl shadow-sm overflow-hidden mb-4">
@@ -294,7 +302,7 @@ export default function Budget() {
 
                         {cat.isOver && (
                           <p className="text-[11px] text-[#e53935] mt-1 font-medium">
-                            ⚠ 超出 {symbol} {fmt(cat.spent - cat.budgetAmt!)}
+                            ⚠ {t('over')} {symbol} {fmt(cat.spent - cat.budgetAmt!)}
                           </p>
                         )}
                       </div>
@@ -304,15 +312,15 @@ export default function Budget() {
               ) : (
                 <div className="bg-white rounded-2xl shadow-sm p-6 text-center mb-4">
                   <p className="text-3xl mb-2">🎯</p>
-                  <p className="text-sm text-gray-500">还没有分类预算</p>
-                  <p className="text-xs text-gray-400 mt-1">在下方点击分类来添加预算</p>
+                  <p className="text-sm text-gray-500">{t('noCategoryBudget')}</p>
+                  <p className="text-xs text-gray-400 mt-1">{t('addCategoryBudgetHint')}</p>
                 </div>
               )}
 
               {/* Add budget for unconfigured categories */}
               {noBudgetNoSpending.length > 0 && (
                 <>
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">添加分类预算</p>
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2 px-1">{t('addCategoryBudgetSection')}</p>
                   <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
                     <div className="grid grid-cols-4">
                       {noBudgetNoSpending.map((cat, i) => (
@@ -363,7 +371,7 @@ export default function Budget() {
             <div className="px-4 py-5 space-y-4">
               <div>
                 <label className="text-xs text-gray-400 font-medium mb-1.5 block">
-                  月度限额（{baseCurrency}）
+                  {t('monthlyLimitLabel', { currency: baseCurrency })}
                 </label>
                 <div className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-3 border border-gray-100 focus-within:border-[#e53935] transition-colors">
                   <span className="text-gray-400 font-medium text-lg">{symbol}</span>
@@ -387,7 +395,7 @@ export default function Budget() {
                     disabled={saving}
                     className="px-4 py-3 bg-gray-100 text-gray-500 rounded-xl text-sm font-medium disabled:opacity-50 active:bg-gray-200"
                   >
-                    删除
+                    {t('delete')}
                   </button>
                 )}
                 <button
@@ -395,7 +403,7 @@ export default function Budget() {
                   disabled={saving || !editValue || parseFloat(editValue) <= 0}
                   className="flex-1 py-3 bg-[#e53935] text-white rounded-xl text-sm font-semibold disabled:opacity-50 active:opacity-90"
                 >
-                  {saving ? '保存中…' : '保存'}
+                  {saving ? t('saving') : t('save')}
                 </button>
               </div>
             </div>
