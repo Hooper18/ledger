@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, ChevronRight, X, Check } from 'lucide-react'
+import { LogOut, ChevronRight, X, Check, Lock } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -8,16 +8,23 @@ import { SUPPORTED_CURRENCIES, CURRENCY_LABELS, CURRENCY_SYMBOLS } from '../type
 import type { Currency } from '../types'
 import type { Lang } from '../lib/i18n'
 
-type ModalType = 'preferred' | 'default' | 'language' | null
+type ModalType = 'preferred' | 'default' | 'language' | 'changePwd' | null
 
 export default function Settings() {
   const navigate = useNavigate()
-  const { user, signOut } = useAuth()
+  const { user, signIn, signOut, updatePassword } = useAuth()
   const { baseCurrency, defaultCurrency, setBaseCurrency, setDefaultCurrency } = useCurrency()
   const { t, lang, setLang } = useLanguage()
 
   const [modal, setModal] = useState<ModalType>(null)
   const [saving, setSaving] = useState(false)
+
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [pwdError, setPwdError] = useState('')
+  const [pwdSuccess, setPwdSuccess] = useState('')
+  const [pwdLoading, setPwdLoading] = useState(false)
 
   async function handleSelect(c: Currency) {
     setSaving(true)
@@ -41,6 +48,53 @@ export default function Settings() {
     await signOut()
     navigate('/auth', { replace: true })
   }
+
+  function openChangePwd() {
+    setOldPassword('')
+    setNewPassword('')
+    setConfirmPassword('')
+    setPwdError('')
+    setPwdSuccess('')
+    setPwdLoading(false)
+    setModal('changePwd')
+  }
+
+  async function handleChangePwd(e: React.FormEvent) {
+    e.preventDefault()
+    setPwdError('')
+    setPwdSuccess('')
+
+    if (newPassword.length < 6) { setPwdError(t('passwordTooShort')); return }
+    if (newPassword !== confirmPassword) { setPwdError(t('passwordMismatch')); return }
+    if (newPassword === oldPassword) { setPwdError(t('changePwdSameAsOld')); return }
+
+    setPwdLoading(true)
+
+    const email = user?.email
+    if (!email) { setPwdError(t('changePwdUpdateFailed')); setPwdLoading(false); return }
+
+    const { error: verifyError } = await signIn(email, oldPassword)
+    if (verifyError) {
+      setPwdLoading(false)
+      setPwdError(t('changePwdWrongCurrent'))
+      return
+    }
+
+    const { error: updateError } = await updatePassword(newPassword)
+    if (updateError) {
+      setPwdLoading(false)
+      setPwdError(t('changePwdUpdateFailed'))
+      return
+    }
+
+    setPwdSuccess(t('changePwdSuccess'))
+    setTimeout(async () => {
+      await signOut()
+      navigate('/auth', { replace: true })
+    }, 1500)
+  }
+
+  const inputClass = 'w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm transition-all'
 
   const currentValue = modal === 'preferred' ? baseCurrency : defaultCurrency
 
@@ -124,6 +178,19 @@ export default function Settings() {
           </button>
         </div>
 
+        {/* Account Security */}
+        <p className="px-5 pt-5 pb-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('changePwdSection')}</p>
+        <div className="mx-4 bg-white rounded-2xl shadow-sm overflow-hidden">
+          <button
+            onClick={openChangePwd}
+            className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 text-left"
+          >
+            <Lock size={18} className="text-gray-500 shrink-0" />
+            <span className="flex-1 text-sm text-gray-800">{t('changePwdLabel')}</span>
+            <ChevronRight size={16} className="text-gray-300 shrink-0" />
+          </button>
+        </div>
+
         {/* Other settings */}
         <p className="px-5 pt-5 pb-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('otherSection')}</p>
         <div className="mx-4 bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -161,7 +228,7 @@ export default function Settings() {
       {/* Bottom sheet (currency picker + language picker) */}
       {modal && (
         <>
-          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => !saving && setModal(null)} />
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => !(saving || pwdLoading) && setModal(null)} />
           <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-2xl z-50 flex flex-col max-h-[70vh]"
             style={{ animation: 'slideUp .22s ease' }}>
 
@@ -173,17 +240,85 @@ export default function Settings() {
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 shrink-0">
               <h2 className="text-base font-semibold text-gray-800">
-                {modal === 'preferred' ? t('selectPreferredCurrency')
+                {modal === 'preferred'  ? t('selectPreferredCurrency')
                 : modal === 'default'   ? t('selectDefaultCurrency')
-                : t('selectLanguage')}
+                : modal === 'language'  ? t('selectLanguage')
+                : t('changePwdTitle')}
               </h2>
-              <button onClick={() => setModal(null)} className="p-1.5 rounded-full hover:bg-gray-100">
+              <button onClick={() => !(saving || pwdLoading) && setModal(null)} className="p-1.5 rounded-full hover:bg-gray-100">
                 <X size={18} className="text-gray-500" />
               </button>
             </div>
 
-            {/* List */}
-            {modal === 'language' ? (
+            {/* Content */}
+            {modal === 'changePwd' ? (
+              <form onSubmit={handleChangePwd} className="overflow-y-auto flex-1 px-4 pt-3 pb-6">
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('changePwdCurrentLabel')}</label>
+                    <input
+                      type="password"
+                      value={oldPassword}
+                      onChange={e => setOldPassword(e.target.value)}
+                      placeholder={t('changePwdCurrentPlaceholder')}
+                      required
+                      autoComplete="current-password"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('changePwdNewLabel')}</label>
+                    <input
+                      type="password"
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      placeholder={t('changePwdNewPlaceholder')}
+                      required
+                      autoComplete="new-password"
+                      className={inputClass}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('changePwdConfirmLabel')}</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      placeholder={t('changePwdConfirmPlaceholder')}
+                      required
+                      autoComplete="new-password"
+                      className={inputClass}
+                    />
+                  </div>
+                  {pwdError && (
+                    <div className="flex items-start gap-2 bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">
+                      <span className="shrink-0 mt-0.5">⚠️</span>
+                      <span>{pwdError}</span>
+                    </div>
+                  )}
+                  {pwdSuccess && (
+                    <div className="flex items-start gap-2 bg-green-50 text-green-700 text-sm px-4 py-3 rounded-xl">
+                      <span className="shrink-0 mt-0.5">✅</span>
+                      <span>{pwdSuccess}</span>
+                    </div>
+                  )}
+                  {!pwdSuccess && (
+                    <button
+                      type="submit"
+                      disabled={pwdLoading}
+                      className="w-full bg-primary text-white py-3.5 rounded-xl font-semibold text-sm tracking-wide active:scale-[0.98] disabled:opacity-60 transition-all duration-150 mt-1"
+                    >
+                      {pwdLoading ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                          {t('changePwdSaving')}
+                        </span>
+                      ) : t('changePwdSaveBtn')}
+                    </button>
+                  )}
+                </div>
+              </form>
+            ) : modal === 'language' ? (
               <div className="overflow-y-auto flex-1">
                 {(['zh', 'en'] as Lang[]).map((l, i) => (
                   <button

@@ -176,6 +176,23 @@ const zh = {
   resetLinkExpired: '重置链接已过期，请重新申请',
   resetSaveFailed: '保存失败，请重试',
   resetGoToSignIn: '前往登录页重新申请',
+
+  // Change Password (Settings page)
+  changePwdSection: '账号安全',
+  changePwdLabel: '修改密码',
+  changePwdTitle: '修改密码',
+  changePwdCurrentLabel: '当前密码',
+  changePwdCurrentPlaceholder: '输入当前密码',
+  changePwdNewLabel: '新密码',
+  changePwdNewPlaceholder: '至少 6 位',
+  changePwdConfirmLabel: '确认新密码',
+  changePwdConfirmPlaceholder: '再次输入',
+  changePwdSameAsOld: '新密码不能与当前密码相同',
+  changePwdSaveBtn: '保存新密码',
+  changePwdSaving: '保存中...',
+  changePwdWrongCurrent: '当前密码错误',
+  changePwdUpdateFailed: '修改失败，请重试',
+  changePwdSuccess: '密码已修改，即将退出登录',
 }
 
 const en: typeof zh = {
@@ -340,6 +357,23 @@ const en: typeof zh = {
   resetLinkExpired: 'Reset link expired, please request again',
   resetSaveFailed: 'Failed to save, please try again',
   resetGoToSignIn: 'Go to sign in page',
+
+  // Change Password (Settings page)
+  changePwdSection: 'Account Security',
+  changePwdLabel: 'Change Password',
+  changePwdTitle: 'Change Password',
+  changePwdCurrentLabel: 'Current Password',
+  changePwdCurrentPlaceholder: 'Enter current password',
+  changePwdNewLabel: 'New Password',
+  changePwdNewPlaceholder: 'At least 6 characters',
+  changePwdConfirmLabel: 'Confirm New Password',
+  changePwdConfirmPlaceholder: 'Re-enter',
+  changePwdSameAsOld: 'New password cannot be the same as current',
+  changePwdSaveBtn: 'Save New Password',
+  changePwdSaving: 'Saving...',
+  changePwdWrongCurrent: 'Current password is incorrect',
+  changePwdUpdateFailed: 'Failed to update, please try again',
+  changePwdSuccess: 'Password changed, signing out...',
 }
 
 export const translations = { zh, en }
