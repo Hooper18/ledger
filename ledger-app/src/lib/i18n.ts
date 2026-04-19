@@ -193,6 +193,18 @@ const zh = {
   changePwdWrongCurrent: '当前密码错误',
   changePwdUpdateFailed: '修改失败，请重试',
   changePwdSuccess: '密码已修改，即将退出登录',
+
+  // Export (Settings page)
+  exportRangeAll: '全部历史',
+  exportRangeThisMonth: '本月',
+  exportRangeCustom: '自定义范围',
+  exportFromLabel: '从',
+  exportToLabel: '至',
+  exportBtn: '导出 CSV',
+  exporting: '导出中...',
+  exportSuccess: '已导出 {count} 条记录',
+  exportNoData: '所选时间段内无记录',
+  exportFailed: '导出失败',
 }
 
 const en: typeof zh = {
@@ -374,6 +386,18 @@ const en: typeof zh = {
   changePwdWrongCurrent: 'Current password is incorrect',
   changePwdUpdateFailed: 'Failed to update, please try again',
   changePwdSuccess: 'Password changed, signing out...',
+
+  // Export (Settings page)
+  exportRangeAll: 'All History',
+  exportRangeThisMonth: 'This Month',
+  exportRangeCustom: 'Custom Range',
+  exportFromLabel: 'From',
+  exportToLabel: 'To',
+  exportBtn: 'Export CSV',
+  exporting: 'Exporting...',
+  exportSuccess: 'Exported {count} records',
+  exportNoData: 'No records in selected range',
+  exportFailed: 'Export failed',
 }
 
 export const translations = { zh, en }

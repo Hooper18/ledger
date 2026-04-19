@@ -7,8 +7,10 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { SUPPORTED_CURRENCIES, CURRENCY_LABELS, CURRENCY_SYMBOLS } from '../types'
 import type { Currency } from '../types'
 import type { Lang } from '../lib/i18n'
+import { exportTransactionsCsv } from '../utils/exportCsv'
+import type { ExportRange } from '../utils/exportCsv'
 
-type ModalType = 'preferred' | 'default' | 'language' | 'changePwd' | null
+type ModalType = 'preferred' | 'default' | 'language' | 'changePwd' | 'export' | null
 
 export default function Settings() {
   const navigate = useNavigate()
@@ -25,6 +27,12 @@ export default function Settings() {
   const [pwdError, setPwdError] = useState('')
   const [pwdSuccess, setPwdSuccess] = useState('')
   const [pwdLoading, setPwdLoading] = useState(false)
+
+  const [exportRange, setExportRange] = useState<ExportRange>('all')
+  const [exportFrom, setExportFrom] = useState('')
+  const [exportTo, setExportTo] = useState('')
+  const [exportLoading, setExportLoading] = useState(false)
+  const [exportMsg, setExportMsg] = useState<{ type: 'success' | 'nodata' | 'error'; text: string } | null>(null)
 
   async function handleSelect(c: Currency) {
     setSaving(true)
@@ -47,6 +55,37 @@ export default function Settings() {
   async function handleSignOut() {
     await signOut()
     navigate('/auth', { replace: true })
+  }
+
+  function openExport() {
+    setExportRange('all')
+    setExportFrom('')
+    setExportTo('')
+    setExportLoading(false)
+    setExportMsg(null)
+    setModal('export')
+  }
+
+  async function handleExport() {
+    if (!user) return
+    if (exportRange === 'custom' && (!exportFrom || !exportTo)) return
+    setExportLoading(true)
+    setExportMsg(null)
+    const result = await exportTransactionsCsv({
+      userId: user.id,
+      baseCurrency,
+      range: exportRange,
+      customFrom: exportFrom || undefined,
+      customTo: exportTo || undefined,
+    })
+    setExportLoading(false)
+    if (!result.success) {
+      setExportMsg({ type: 'error', text: t('exportFailed') + (result.error ? ': ' + result.error : '') })
+    } else if (result.rowCount === 0) {
+      setExportMsg({ type: 'nodata', text: t('exportNoData') })
+    } else {
+      setExportMsg({ type: 'success', text: t('exportSuccess', { count: result.rowCount! }) })
+    }
   }
 
   function openChangePwd() {
@@ -203,10 +242,9 @@ export default function Settings() {
             <ChevronRight size={16} className="text-gray-300 shrink-0" />
           </button>
           <div className="border-t border-gray-50" />
-          <button className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 text-left opacity-40" disabled>
+          <button onClick={openExport} className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 text-left">
             <span className="text-lg shrink-0">📤</span>
             <span className="flex-1 text-sm text-gray-800">{t('dataExport')}</span>
-            <span className="text-xs text-gray-400 mr-1">{t('comingSoon')}</span>
             <ChevronRight size={16} className="text-gray-300 shrink-0" />
           </button>
         </div>
@@ -228,7 +266,7 @@ export default function Settings() {
       {/* Bottom sheet (currency picker + language picker) */}
       {modal && (
         <>
-          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => !(saving || pwdLoading) && setModal(null)} />
+          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => !(saving || pwdLoading || exportLoading) && setModal(null)} />
           <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-2xl z-50 flex flex-col max-h-[70vh]"
             style={{ animation: 'slideUp .22s ease' }}>
 
@@ -243,15 +281,98 @@ export default function Settings() {
                 {modal === 'preferred'  ? t('selectPreferredCurrency')
                 : modal === 'default'   ? t('selectDefaultCurrency')
                 : modal === 'language'  ? t('selectLanguage')
+                : modal === 'export'    ? t('dataExport')
                 : t('changePwdTitle')}
               </h2>
-              <button onClick={() => !(saving || pwdLoading) && setModal(null)} className="p-1.5 rounded-full hover:bg-gray-100">
+              <button onClick={() => !(saving || pwdLoading || exportLoading) && setModal(null)} className="p-1.5 rounded-full hover:bg-gray-100">
                 <X size={18} className="text-gray-500" />
               </button>
             </div>
 
             {/* Content */}
-            {modal === 'changePwd' ? (
+            {modal === 'export' ? (
+              <div className="overflow-y-auto flex-1 px-4 pt-3 pb-6">
+                <div className="space-y-3">
+                  {/* Range options */}
+                  {(['all', 'thisMonth', 'custom'] as ExportRange[]).map(value => {
+                    const label = value === 'all' ? t('exportRangeAll')
+                      : value === 'thisMonth' ? t('exportRangeThisMonth')
+                      : t('exportRangeCustom')
+                    const selected = exportRange === value
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => { setExportRange(value); setExportMsg(null) }}
+                        className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border transition-colors text-sm ${
+                          selected ? 'bg-red-50 border-[#e53935] text-[#e53935] font-medium' : 'bg-white border-gray-200 text-gray-700'
+                        }`}
+                      >
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          selected ? 'border-[#e53935]' : 'border-gray-300'
+                        }`}>
+                          {selected && <div className="w-2 h-2 rounded-full bg-[#e53935]" />}
+                        </div>
+                        {label}
+                      </button>
+                    )
+                  })}
+
+                  {/* Custom date inputs */}
+                  {exportRange === 'custom' && (
+                    <div className="space-y-2 pt-1">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('exportFromLabel')}</label>
+                        <input
+                          type="date"
+                          value={exportFrom}
+                          max={exportTo || undefined}
+                          onChange={e => setExportFrom(e.target.value)}
+                          className={inputClass}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('exportToLabel')}</label>
+                        <input
+                          type="date"
+                          value={exportTo}
+                          min={exportFrom || undefined}
+                          onChange={e => setExportTo(e.target.value)}
+                          className={inputClass}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Result message */}
+                  {exportMsg && (
+                    <div className={`flex items-start gap-2 text-sm px-4 py-3 rounded-xl ${
+                      exportMsg.type === 'success' ? 'bg-green-50 text-green-700'
+                      : exportMsg.type === 'nodata' ? 'bg-gray-50 text-gray-600'
+                      : 'bg-red-50 text-red-600'
+                    }`}>
+                      <span className="shrink-0 mt-0.5">
+                        {exportMsg.type === 'success' ? '✅' : exportMsg.type === 'nodata' ? '📭' : '⚠️'}
+                      </span>
+                      <span>{exportMsg.text}</span>
+                    </div>
+                  )}
+
+                  {/* Export button */}
+                  <button
+                    onClick={handleExport}
+                    disabled={exportLoading || (exportRange === 'custom' && (!exportFrom || !exportTo))}
+                    className="w-full bg-primary text-white py-3.5 rounded-xl font-semibold text-sm tracking-wide active:scale-[0.98] disabled:opacity-60 transition-all duration-150 mt-1"
+                  >
+                    {exportLoading ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        {t('exporting')}
+                      </span>
+                    ) : t('exportBtn')}
+                  </button>
+                </div>
+              </div>
+            ) : modal === 'changePwd' ? (
               <form onSubmit={handleChangePwd} className="overflow-y-auto flex-1 px-4 pt-3 pb-6">
                 <div className="space-y-3.5">
                   <div>
