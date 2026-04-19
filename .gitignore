@@ -1,2 +1,6 @@
-﻿# Claude Code local settings
+# Claude Code local settings
 .claude/
+STEP1_*.md
+STEP1_*.sql
+STEP*_DIAGNOSIS.md
+STEP*_BACKUP.sql
