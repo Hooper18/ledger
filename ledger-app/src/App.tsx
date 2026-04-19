@@ -11,6 +11,7 @@ import Charts from './pages/Charts'
 import Settings from './pages/Settings'
 import Budget from './pages/Budget'
 import ResetPassword from './pages/ResetPassword'
+import About from './pages/About'
 
 function LoadingScreen() {
   return (
@@ -98,6 +99,7 @@ function AppRoutes() {
         }
       />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/about" element={<About />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

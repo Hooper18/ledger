@@ -162,6 +162,11 @@ const zh = {
   forgotRateLimit: '请求过于频繁，请稍后再试',
   forgotSendFailed: '发送失败，请稍后再试',
 
+  // About page
+  aboutPageTitle: '关于本应用',
+  backAriaLabel: '返回',
+  loginAgreementLinkText: '服务条款和隐私政策',
+
   // Reset password landing page (ResetPassword.tsx)
   resetPasswordTitle: '设置新密码',
   resetPasswordDesc: '请输入你的新密码',
@@ -353,6 +358,10 @@ const en: typeof zh = {
   forgotBackToLogin: 'Back to Sign In',
   forgotRateLimit: 'Too many requests, please try again later',
   forgotSendFailed: 'Failed to send, please try again',
+
+  aboutPageTitle: 'About',
+  backAriaLabel: 'Back',
+  loginAgreementLinkText: 'Terms of Service and Privacy Policy',
 
   // Reset password landing page (ResetPassword.tsx)
   resetPasswordTitle: 'Set New Password',

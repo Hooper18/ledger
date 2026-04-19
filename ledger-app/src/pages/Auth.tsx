@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import type { Lang } from '../lib/i18n'
@@ -90,6 +90,10 @@ export default function Auth() {
   }
 
   const inputClass = 'w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-sm transition-all'
+
+  const agreement = t('loginAgreement')
+  const linkText = t('loginAgreementLinkText')
+  const agreementParts = agreement.split(linkText)
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -279,7 +283,15 @@ export default function Auth() {
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6 px-4">
-          {t('loginAgreement')}
+          {agreementParts.length === 2 ? (
+            <>
+              {agreementParts[0]}
+              <Link to="/about" className="text-primary hover:underline">
+                {linkText}
+              </Link>
+              {agreementParts[1]}
+            </>
+          ) : agreement}
         </p>
       </div>
     </div>
