@@ -27,6 +27,14 @@
   }
 }
 
+@layer base {
+  /* Suppress browser-native password reveal button (Edge/IE) */
+  input[type="password"]::-ms-reveal,
+  input[type="password"]::-ms-clear {
+    display: none;
+  }
+}
+
 @layer utilities {
   .no-scrollbar::-webkit-scrollbar {
     display: none;

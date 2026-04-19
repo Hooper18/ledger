@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import type { Lang } from '../lib/i18n'
+import PasswordInput from '../components/PasswordInput'
 
 type Mode = 'login' | 'register' | 'forgot'
 
@@ -206,14 +207,12 @@ export default function Auth() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('passwordLabel')}</label>
-                  <input
-                    type="password"
+                  <PasswordInput
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={setPassword}
                     placeholder={t('passwordPlaceholder')}
                     required
                     autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                    className={inputClass}
                   />
                   {mode === 'login' && (
                     <div className="flex justify-end mt-1.5">
@@ -231,14 +230,12 @@ export default function Auth() {
                 {mode === 'register' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('confirmPasswordLabel')}</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      onChange={setConfirmPassword}
                       placeholder={t('confirmPasswordPlaceholder')}
                       required
                       autoComplete="new-password"
-                      className={inputClass}
                     />
                   </div>
                 )}

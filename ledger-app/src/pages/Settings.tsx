@@ -9,6 +9,7 @@ import type { Currency } from '../types'
 import type { Lang } from '../lib/i18n'
 import { exportTransactionsCsv } from '../utils/exportCsv'
 import type { ExportRange } from '../utils/exportCsv'
+import PasswordInput from '../components/PasswordInput'
 
 type ModalType = 'preferred' | 'default' | 'language' | 'changePwd' | 'export' | null
 
@@ -377,38 +378,32 @@ export default function Settings() {
                 <div className="space-y-3.5">
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('changePwdCurrentLabel')}</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={oldPassword}
-                      onChange={e => setOldPassword(e.target.value)}
+                      onChange={setOldPassword}
                       placeholder={t('changePwdCurrentPlaceholder')}
                       required
                       autoComplete="current-password"
-                      className={inputClass}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('changePwdNewLabel')}</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={newPassword}
-                      onChange={e => setNewPassword(e.target.value)}
+                      onChange={setNewPassword}
                       placeholder={t('changePwdNewPlaceholder')}
                       required
                       autoComplete="new-password"
-                      className={inputClass}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-600 mb-1.5">{t('changePwdConfirmLabel')}</label>
-                    <input
-                      type="password"
+                    <PasswordInput
                       value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
+                      onChange={setConfirmPassword}
                       placeholder={t('changePwdConfirmPlaceholder')}
                       required
                       autoComplete="new-password"
-                      className={inputClass}
                     />
                   </div>
                   {pwdError && (
