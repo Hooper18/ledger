@@ -94,7 +94,7 @@ export default function Auth() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
-      <div className="bg-primary text-white px-6 pt-14 pb-12 text-center relative overflow-hidden">
+      <div className="bg-primary text-white px-6 pt-10 pb-10 text-center relative overflow-hidden">
         <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white/10" />
         <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/10" />
         <button
@@ -104,14 +104,12 @@ export default function Auth() {
           {lang === 'zh' ? 'EN' : '中'}
         </button>
         <div className="relative">
-          <div className="text-5xl mb-3">💰</div>
-          <h1 className="text-2xl font-bold tracking-wide">{t('appName')}</h1>
-          <p className="text-red-100 text-sm mt-1">{t('appSlogan')}</p>
+          <h1 className="text-3xl font-bold tracking-wide">{t('appName')}</h1>
         </div>
       </div>
 
       {/* Card */}
-      <div className="flex-1 px-5 -mt-5">
+      <div className="flex-1 px-5 -mt-5 relative">
         <div className="bg-white rounded-2xl shadow-lg p-6">
 
           {mode === 'forgot' ? (

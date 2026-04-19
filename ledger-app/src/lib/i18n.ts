@@ -3,7 +3,6 @@ export type Lang = 'zh' | 'en'
 const zh = {
   // App
   appName: '口袋记账',
-  appSlogan: '管理你的每一分钱',
   appVersion: '口袋记账 v0.1.0',
 
   // Common
@@ -209,7 +208,6 @@ const zh = {
 
 const en: typeof zh = {
   appName: 'Pocket Ledger',
-  appSlogan: 'Manage every dollar',
   appVersion: 'Pocket Ledger v0.1.0',
 
   save: 'Save',
