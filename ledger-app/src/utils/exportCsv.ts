@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import { formatExchangeRate } from './format'
 
 export type ExportRange = 'all' | 'thisMonth' | 'custom'
 
@@ -75,7 +76,7 @@ export async function exportTransactionsCsv(options: ExportOptions): Promise<{
         escapeField(tx.categories?.name ?? ''),
         tx.amount.toFixed(2),
         tx.currency,
-        tx.exchange_rate != null ? tx.exchange_rate.toFixed(2) : '',
+        formatExchangeRate(tx.exchange_rate, 'export'),
         amountBase.toFixed(2),
         baseCurrency,
         escapeField(tx.description ?? ''),
