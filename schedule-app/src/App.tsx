@@ -41,7 +41,6 @@ function Protected({ children }: { children: ReactNode }) {
 
 function AppRoutes() {
   const { user, loading, isRecoverySession } = useAuth()
-  if (loading) return <Loading />
   return (
     <>
       {user && <InviteRedemptionBanner />}
@@ -49,7 +48,13 @@ function AppRoutes() {
         <Routes>
           <Route
             path="/auth"
-            element={user && !isRecoverySession ? <Navigate to="/" replace /> : <AuthPage />}
+            element={
+              loading
+                ? <Loading />
+                : user && !isRecoverySession
+                  ? <Navigate to="/" replace />
+                  : <AuthPage />
+            }
           />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Protected><Home /></Protected>} />
