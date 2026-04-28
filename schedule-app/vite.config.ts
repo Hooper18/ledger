@@ -9,10 +9,49 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: 'script-defer',
       includeAssets: ['favicon-32.png', 'apple-touch-icon.png'],
       workbox: {
         // pdf.worker + fileParsers chunks exceed the default 2 MiB limit.
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+        // index.html 走 NetworkFirst，确保新版本能即时生效；资源走 CacheFirst。
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api\//, /^\/auth\//],
+        runtimeCaching: [
+          {
+            // 静态资源（JS/CSS/字体/图片）— 哈希命名，永不变化，CacheFirst。
+            urlPattern: ({ request }) =>
+              ['style', 'script', 'worker', 'font', 'image'].includes(request.destination),
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'static-assets',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Supabase REST / RPC — NetworkFirst，弱网下回退到上次结果。
+            urlPattern: /^https:\/\/.*\.supabase\.(co|in)\/rest\//,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'supabase-rest',
+              networkTimeoutSeconds: 5,
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 5 * 60,
+              },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            // Supabase Auth + Functions（claude-proxy）— 不缓存，纯透传走网络。
+            urlPattern: /^https:\/\/.*\.supabase\.(co|in)\/(auth|functions)\//,
+            handler: 'NetworkOnly',
+          },
+        ],
       },
       manifest: {
         name: 'XMUM Schedule',
