@@ -92,3 +92,13 @@ dev：`vite`、`vite-plugin-pwa`、`tailwindcss v4`、`@tailwindcss/vite`、`@vi
 - Tailwind v4 (`@tailwindcss/vite`) 通过 `@import "tailwindcss"` 自动扫描使用，无需手动 `content` purge；输出 CSS 仅 9.79 KB gzip。
 - 结论：本步无代码改动。
 
+### 第 4 步 — 静态资源优化（验证）
+- `index.html` 无外部 `<script>` / `<link rel="stylesheet">` 引用 CDN（无 Google Fonts、无 jQuery 等）。
+- 主入口 `<script type="module" src="/src/main.tsx">`：模块脚本规范上隐含 `defer`，不会阻塞 HTML 解析。
+- 内联主题恢复脚本（5 行）必须在渲染前执行以避免主题闪烁，保留。
+- `public/` 下仅有 favicon (1.27 KB) / apple-touch-icon (7.43 KB) / pwa-192 (7.93 KB) / pwa-512 (19.47 KB)，无大图。
+- `public/extensions.7z` (16 KB) 是 Auth/Help 弹层的下载链接，不影响首屏。
+- 唯一非 defer 的脚本是 `registerSW.js`（134 B），第 5 步通过 `injectRegister: 'script-defer'` 处理。
+- 结论：本步无代码改动，等第 5 步配套处理 SW 注册。
+
+
