@@ -72,4 +72,23 @@ dev：`vite`、`vite-plugin-pwa`、`tailwindcss v4`、`@tailwindcss/vite`、`@vi
 
 # 优化记录与对比
 
-（每完成一步追加在此）
+### 第 1 步 — 路由级 Code Splitting
+- 所有页面 (`Auth/ResetPassword/Home/Timeline/Calendar/WeeklySchedule/Courses/CourseDetail/Import/AcademicCalendar`) 改为 `React.lazy`，外层 `<Suspense fallback={<Loading />}>`。
+- 主 chunk：592,604 B → **391,628 B**（gzip 164 KB → **115 KB**），减重 ≈ 30%。
+- 单页 chunk 出现：`Home 7.9 KB`、`Timeline 13.6 KB`、`Calendar 25.2 KB`、`WeeklySchedule 8.6 KB`、`Courses 7.2 KB`、`CourseDetail 5.9 KB`、`Import 63.5 KB`、`AcademicCalendar 5.8 KB`、`ResetPassword 1.5 KB`。
+- PWA precache 条目数 10 → 29，但总体积只多了 5 KB（按需加载彻底取代了一次性加载）。
+
+### 第 2 步 — Supabase 初始化优化
+- `AppRoutes` 不再在 `loading=true` 时整页 `<Loading />`，受保护路由可与 `getSession()` 并行下载 lazy chunk；`Protected` 自身已经处理 loading 态，UX 不变。
+- `/auth` 路由 element 内部仍判断 `loading`，避免登录用户访问 `/auth` 时闪一下登录页再跳转。
+- `/reset-password` 直接渲染（不依赖 auth state）。
+- `supabaseClient` 创建时机不变（模块顶层），但客户端初始化是同步的（仅 `createClient`，不发请求），所以无需进一步异步化。
+
+### 第 3 步 — 依赖优化（验证）
+- 全项目 `import * as` 只有 `pdfjs-dist` 一处，且在 `fileParsers.ts`（已 dynamic import）。
+- 无 `date-fns / moment / dayjs / recharts / @anthropic-ai/sdk` 等可疑依赖。
+- `lucide-react` 全部为命名导入；构建产物里 `chevron-*` / `trash-2` / `map-pin` / `triangle` 等都成为单独的 lazy 共享 chunk。
+- `mammoth / pdfjs-dist / jszip` 仅 `lib/fileParsers.ts` 用，且已通过 `import('../../../lib/fileParsers')` 在 `FileImportPanel` / `MoodleImportPanel` 内部 lazy 加载。
+- Tailwind v4 (`@tailwindcss/vite`) 通过 `@import "tailwindcss"` 自动扫描使用，无需手动 `content` purge；输出 CSS 仅 9.79 KB gzip。
+- 结论：本步无代码改动。
+
