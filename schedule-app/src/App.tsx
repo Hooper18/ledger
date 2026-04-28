@@ -1,18 +1,20 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { useSemesterBootstrap } from './hooks/useSemesterBootstrap'
-import AuthPage from './pages/Auth'
-import ResetPassword from './pages/ResetPassword'
 import InviteRedemptionBanner from './components/InviteRedemptionBanner'
-import Home from './pages/Home'
-import Timeline from './pages/Timeline'
-import CalendarPage from './pages/Calendar'
-import Courses from './pages/Courses'
-import CourseDetail from './pages/CourseDetail'
-import Import from './pages/Import'
-import AcademicCalendar from './pages/AcademicCalendar'
-import WeeklySchedule from './pages/WeeklySchedule'
+
+const AuthPage = lazy(() => import('./pages/Auth'))
+const ResetPassword = lazy(() => import('./pages/ResetPassword'))
+const Home = lazy(() => import('./pages/Home'))
+const Timeline = lazy(() => import('./pages/Timeline'))
+const CalendarPage = lazy(() => import('./pages/Calendar'))
+const Courses = lazy(() => import('./pages/Courses'))
+const CourseDetail = lazy(() => import('./pages/CourseDetail'))
+const Import = lazy(() => import('./pages/Import'))
+const AcademicCalendar = lazy(() => import('./pages/AcademicCalendar'))
+const WeeklySchedule = lazy(() => import('./pages/WeeklySchedule'))
 
 function Loading({ message }: { message?: string }) {
   return (
@@ -43,24 +45,26 @@ function AppRoutes() {
   return (
     <>
       {user && <InviteRedemptionBanner />}
-      <Routes>
-        <Route
-          path="/auth"
-          element={user && !isRecoverySession ? <Navigate to="/" replace /> : <AuthPage />}
-        />
-        <Route path="/reset-password" element={<ResetPassword />} />
-        <Route path="/" element={<Protected><Home /></Protected>} />
-        <Route path="/todo" element={<Protected><Timeline /></Protected>} />
-        <Route path="/calendar" element={<Protected><CalendarPage /></Protected>} />
-        <Route path="/timetable" element={<Protected><WeeklySchedule /></Protected>} />
-        {/* Legacy URL; keeps bookmarks working after rename to /timetable. */}
-        <Route path="/weekly" element={<Navigate to="/timetable" replace />} />
-        <Route path="/courses" element={<Protected><Courses /></Protected>} />
-        <Route path="/courses/:id" element={<Protected><CourseDetail /></Protected>} />
-        <Route path="/import" element={<Protected><Import /></Protected>} />
-        <Route path="/academic" element={<Protected><AcademicCalendar /></Protected>} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <Suspense fallback={<Loading />}>
+        <Routes>
+          <Route
+            path="/auth"
+            element={user && !isRecoverySession ? <Navigate to="/" replace /> : <AuthPage />}
+          />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/" element={<Protected><Home /></Protected>} />
+          <Route path="/todo" element={<Protected><Timeline /></Protected>} />
+          <Route path="/calendar" element={<Protected><CalendarPage /></Protected>} />
+          <Route path="/timetable" element={<Protected><WeeklySchedule /></Protected>} />
+          {/* Legacy URL; keeps bookmarks working after rename to /timetable. */}
+          <Route path="/weekly" element={<Navigate to="/timetable" replace />} />
+          <Route path="/courses" element={<Protected><Courses /></Protected>} />
+          <Route path="/courses/:id" element={<Protected><CourseDetail /></Protected>} />
+          <Route path="/import" element={<Protected><Import /></Protected>} />
+          <Route path="/academic" element={<Protected><AcademicCalendar /></Protected>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </Suspense>
     </>
   )
 }
