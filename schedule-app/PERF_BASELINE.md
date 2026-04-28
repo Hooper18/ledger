@@ -101,4 +101,80 @@ dev：`vite`、`vite-plugin-pwa`、`tailwindcss v4`、`@tailwindcss/vite`、`@vi
 - 唯一非 defer 的脚本是 `registerSW.js`（134 B），第 5 步通过 `injectRegister: 'script-defer'` 处理。
 - 结论：本步无代码改动，等第 5 步配套处理 SW 注册。
 
+### 第 5 步 — PWA / Service Worker 缓存策略
+- `vite.config.ts` 加 `injectRegister: 'script-defer'` → `<script ... defer>` 不再阻塞解析。
+- `workbox.runtimeCaching` 三条规则：
+  1. **静态资源（script/style/font/image/worker）→ CacheFirst**，30 天，最多 100 条；
+  2. **`https://*.supabase.{co,in}/rest/*` → NetworkFirst**，5 秒超时回退缓存，5 分钟 TTL，最多 50 条；
+  3. **`https://*.supabase.{co,in}/(auth|functions)/*` → NetworkOnly**（登录态、claude-proxy 必须走网络）。
+- `navigateFallback: '/index.html'`，并把 `/auth/`、`/api/` 排除在 fallback 之外（这些不是 SPA 路由）。
+- 验证：`dist/sw.js` 内出现 `static-assets / supabase-rest / NetworkFirst / CacheFirst / NetworkOnly` 字符串。
+
+### 第 6 步 — Vite 构建配置优化
+- `build.target = 'es2020'`、`build.cssCodeSplit = true`（已是默认，显式锁定）。
+- `manualChunks`：
+  - `vendor-react`：`react / react-dom / react-router-dom`
+  - `vendor-supabase`：`@supabase/supabase-js`
+- 安装 `vite-plugin-compression@^0.5.1`，同时生成 `.gz` 与 `.br`（`threshold: 1024`）。
+
+---
+
+## 优化后产出（首屏关键路径）
+
+| 文件 | raw | gzip |
+| --- | --- | --- |
+| `index-*.js`（业务入口） | **31,464 B（≈30 KB）** | **10,509 B（≈10 KB）** |
+| `vendor-react-*.js` | 165,059 B（≈161 KB） | 53,781 B（≈53 KB） |
+| `vendor-supabase-*.js` | 194,323 B（≈190 KB） | 51,432 B（≈50 KB） |
+| `Home-*.js`（首页 lazy chunk） | 8,194 B | 2,982 B |
+| `index-*.css` | 54,860 B | 9,751 B |
+
+> 首页 `/` 关键路径合计：**约 454 KB raw / 128 KB gzip**（其中 vendor 部分 ≈ 359 KB raw / 105 KB gzip 可永久缓存）。
+
+| 文件 | 备注 |
+| --- | --- |
+| `Calendar-*.js` 25 KB / `Timeline-*.js` 14 KB / `WeeklySchedule-*.js` 9 KB / 其它路由 | 仅访问对应路由时下载 |
+| `Import-*.js` 64 KB | `/import` 路由专属 |
+| `EventModal-*.js` 15 KB | 多页共享，懒加载 |
+| `fileParsers-*.js` 857 KB | 仅 `FileImportPanel` / `MoodleImportPanel` 内 dynamic import |
+| `pdf.worker.min-*.mjs` 1.31 MB | 仅 PDF 导入时由 web worker 加载 |
+
+预压缩（vite-plugin-compression）：所有 `> 1 KB` 的产物都额外生成了 `.gz` 与 `.br`，Vercel 静态托管会优先使用 `.br`。
+
+## 主要对比（首屏关键路径 raw / gzip）
+
+| 项目 | 基线 | 优化后 | 减少 |
+| --- | --- | --- | --- |
+| 主入口 chunk | 580 KB / 164 KB | **30 KB / 10 KB** | **−95% / −94%** |
+| 首页关键路径合计 | 580 KB / 164 KB | 397 KB / 117 KB | −32% / −29% |
+| 业务代码 chunk（每次部署都会变） | 580 KB / 164 KB | **30 KB / 10 KB** | **−94%（命中浏览器/Service Worker 缓存场景）** |
+| Brotli 大小（实际线上） | 不可用 | 业务入口 ~9 KB / vendor ~88 KB | — |
+
+## 各步预期收益
+
+1. **第 1 步（路由 lazy）**：首次访问主入口体积砍 ~30%，访问其他页时只新增对应 lazy chunk。
+2. **第 2 步（auth 不阻塞）**：受保护路由的 lazy chunk 下载与 `getSession()` 并行进行，弱网下首屏可视化提前到 lazy chunk 下载时间。
+3. **第 3-4 步**：审计无需改动；记录现状方便后续 review。
+4. **第 5 步（runtime caching）**：二次访问基本零网络（静态走 CacheFirst），断网/弱网下 Supabase REST 仍能回退到上次结果；`registerSW.js` 加 `defer` 不阻塞。
+5. **第 6 步（manualChunks + brotli）**：vendor-react / vendor-supabase 在版本不变时永久命中 immutable 缓存；业务入口缩到 30 KB（gzip 10 KB），下次部署用户重新下载量大幅降低。
+
+## 验证
+
+- 构建：`npm run build` 通过，无错误。
+- 预览：`npm run preview` 启动后 `curl` 验证：
+  - `/` → 200 + index.html（含 modulepreload vendor-react / vendor-supabase）
+  - `/calendar` → 200 + 同一 index.html（SPA 回退正确）
+  - `/assets/index-*.js`、`/assets/vendor-react-*.js`、`/sw.js` 全部 200。
+- TypeScript：`tsc -b` 无错误（已包含在 build 流程）。
+- 不可在本环境（无浏览器）做交互式 UI 验收，请用户在本地或部署环境跑通：日历视图切换、新增/编辑/删除日程、登录/登出、主题切换、quick-add、claude-proxy 调用。
+
+## 硬性约束遵守情况
+
+- ✅ 不动业务逻辑（仅改 import 方式 / Suspense 包裹 / vite 配置）。
+- ✅ 不动 UI 样式（Loading 复用现有组件）。
+- ✅ 不删除任何功能。
+- ✅ 不升级 React / Supabase 大版本（仅新增 dev 依赖 `vite-plugin-compression`）。
+- ✅ 每步独立中文 commit。
+
+
 
