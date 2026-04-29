@@ -1,0 +1,40 @@
+{
+  "app": {
+    "title": "Guitar Tuner"
+  },
+  "permission": {
+    "title": "Microphone Permission Required",
+    "description": "This tuner needs microphone access to detect pitch. All processing happens locally on your device — no audio is uploaded.",
+    "grantButton": "Grant Microphone",
+    "deniedTitle": "Microphone Permission Denied",
+    "deniedHelp": "Re-allow microphone access from the lock icon next to the URL, then refresh the page.",
+    "unsupported": "Microphone API is not supported in this browser. Try the latest Chrome, Edge, or Safari.",
+    "retry": "Try Again"
+  },
+  "tuner": {
+    "playStringHint": "Pluck a string",
+    "flat": "flat",
+    "sharp": "sharp",
+    "inTune": "In tune",
+    "auto": "Auto",
+    "manual": "Manual",
+    "tuningLabel": "Tuning",
+    "hzUnit": "Hz",
+    "centsUnit": "cents"
+  },
+  "tunings": {
+    "selectTitle": "Select Tuning",
+    "close": "Close"
+  },
+  "settings": {
+    "title": "Settings",
+    "a4Label": "Reference A4",
+    "a4Hint": "Standard pitch (Hz)",
+    "language": "Language",
+    "languageZh": "中文",
+    "languageEn": "English",
+    "close": "Close",
+    "about": "About",
+    "aboutText": "Front-end-only tuner using the YIN algorithm. All processing stays on your device."
+  }
+}
