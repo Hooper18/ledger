@@ -98,7 +98,7 @@ function StringButton({
   onClick: () => void;
 }) {
   const state = isInTune
-    ? 'bg-accent border-accent text-base shadow-[0_0_18px_rgba(74,222,128,0.55)]'
+    ? 'bg-accent border-accent text-deep shadow-[0_0_18px_rgba(74,222,128,0.55)]'
     : isActive
     ? 'bg-elev-2 border-accent-warn text-fg'
     : 'bg-elev border-line text-fg-dim';
@@ -160,7 +160,7 @@ function ChromaticRing({ pitch }: { pitch: PitchData | null }) {
               key={note}
               className={`flex h-12 items-center justify-center rounded-full border text-base font-medium transition-colors duration-150 ${
                 inTune
-                  ? 'border-accent bg-accent text-base'
+                  ? 'border-accent bg-accent text-deep'
                   : isActive
                   ? 'border-accent-warn bg-elev-2 text-fg'
                   : 'border-line bg-elev text-fg-dim'
