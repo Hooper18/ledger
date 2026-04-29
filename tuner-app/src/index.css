@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg-base: #1a1a2e;
+  --color-bg-elev: #232342;
+  --color-bg-elev-2: #2d2d56;
+  --color-fg: #f5f5fa;
+  --color-fg-mute: #9ca3af;
+  --color-fg-dim: #5b5d76;
+  --color-accent: #4ade80;
+  --color-accent-warm: #fbbf24;
+  --color-accent-warn: #f97316;
+  --color-line: #3a3a5c;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background-color: var(--color-bg-base);
+  color: var(--color-fg);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+button {
+  font-family: inherit;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+}
+
+@keyframes pulse-glow {
+  0%,
+  100% {
+    text-shadow: 0 0 12px rgba(74, 222, 128, 0.4);
+  }
+  50% {
+    text-shadow: 0 0 28px rgba(74, 222, 128, 0.85);
+  }
+}
+
+.glow-in-tune {
+  animation: pulse-glow 1.2s ease-in-out infinite;
+}
