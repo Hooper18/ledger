@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-base: #1a1a2e;
-  --color-bg-elev: #232342;
-  --color-bg-elev-2: #2d2d56;
+  --color-base: #1a1a2e;
+  --color-elev: #232342;
+  --color-elev-2: #2d2d56;
   --color-fg: #f5f5fa;
   --color-fg-mute: #9ca3af;
   --color-fg-dim: #5b5d76;
@@ -18,7 +18,7 @@ body,
 #root {
   height: 100%;
   margin: 0;
-  background-color: var(--color-bg-base);
+  background-color: var(--color-base);
   color: var(--color-fg);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
     sans-serif;
