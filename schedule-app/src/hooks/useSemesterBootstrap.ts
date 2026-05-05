@@ -8,6 +8,26 @@ const TEMPLATE_CODE = '2026/04'
 // double-insert a semester for the same user.
 const started = new Set<string>()
 
+// Once a user has confirmed-have-semester, remember it so subsequent loads
+// (especially offline cold starts) don't burn 100ms-3s on the network check.
+// Cleared if the bootstrap query later returns "no semester" — keeps us
+// honest if the user wipes their data server-side.
+const BOOTSTRAPPED_KEY_PREFIX = 'schedule:bootstrapped:'
+function hasBootstrapped(uid: string): boolean {
+  try {
+    return localStorage.getItem(BOOTSTRAPPED_KEY_PREFIX + uid) === '1'
+  } catch {
+    return false
+  }
+}
+function markBootstrapped(uid: string) {
+  try {
+    localStorage.setItem(BOOTSTRAPPED_KEY_PREFIX + uid, '1')
+  } catch {
+    // localStorage 不可用（隐私模式 / 配额），下次还会走网络检查，无害。
+  }
+}
+
 /**
  * On first login for a user, copy the shared XMUM semester template
  * (any row with code='2026/04') + its academic_calendar rows into
@@ -36,6 +56,13 @@ export function useSemesterBootstrap() {
     }
     started.add(uid)
 
+    // 短路：如果之前确认过该用户已有学期，跳过这次"是否需要 bootstrap"
+    // 的网络请求。离线冷启动收益最大 —— 这一次省下来就是 100ms~3s。
+    if (hasBootstrapped(uid)) {
+      setDone(true)
+      return
+    }
+
     ;(async () => {
       try {
         // 1. Does the user already have any semester?
@@ -46,6 +73,7 @@ export function useSemesterBootstrap() {
           .limit(1)
         if (e1) throw new Error(`check existing: ${e1.message}`)
         if (mine && mine.length > 0) {
+          markBootstrapped(uid)
           if (!cancelledRef.current) setDone(true)
           return
         }
@@ -108,6 +136,7 @@ export function useSemesterBootstrap() {
           if (e5) throw new Error(`insert calendar: ${e5.message}`)
         }
 
+        markBootstrapped(uid)
         if (!cancelledRef.current) setDone(true)
       } catch (err) {
         // Failure — unlock so a retry (page refresh) can try again.
