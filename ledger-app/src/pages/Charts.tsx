@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -11,10 +11,10 @@ import {
 import type { TooltipItem } from 'chart.js'
 import { Bar, Pie } from 'react-chartjs-2'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useTransactions } from '../hooks/useTransactions'
+import { useCategories } from '../hooks/useCategories'
 import { CURRENCY_SYMBOLS } from '../types'
 import type { Currency, TxDetail } from '../types'
 
@@ -43,9 +43,10 @@ function monthEnd(y: number, m: number) {
 }
 
 export default function Charts() {
-  const { user } = useAuth()
   const { baseCurrency, rates } = useCurrency()
   const { t, lang } = useLanguage()
+  const { transactions: allTxs, loading: txLoading } = useTransactions()
+  const { categories } = useCategories()
 
   const dispCurrency = baseCurrency
   const symbol = CURRENCY_SYMBOLS[dispCurrency as Currency] ?? dispCurrency
@@ -89,64 +90,54 @@ export default function Charts() {
 
   // ── Tab 1: Overview (近6个月) ──────────────────────────────────────────
   type MonthBucket = { month: string; income: number; expense: number }
-  const [overview, setOverview] = useState<MonthBucket[]>([])
-  const [overviewLoading, setOverviewLoading] = useState(true)
-
-  useEffect(() => {
-    if (!user) return
-    setOverviewLoading(true)
-    const start = new Date(NOW.getFullYear(), NOW.getMonth() - 5, 1)
-    const startStr = monthStart(start.getFullYear(), start.getMonth() + 1)
-    const endStr   = monthEnd(NOW.getFullYear(), NOW.getMonth() + 1)
-
-    supabase
-      .from('transactions')
-      .select('type, amount, currency, date, exchange_rate')
-      .eq('user_id', user.id)
-      .gte('date', startStr)
-      .lt('date', endStr)
-      .in('type', ['expense', 'income'])
-      .then(({ data }) => {
-        const buckets: Record<string, { income: number; expense: number }> = {}
-        for (let i = 5; i >= 0; i--) {
-          const d = new Date(NOW.getFullYear(), NOW.getMonth() - i, 1)
-          const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-          buckets[key] = { income: 0, expense: 0 }
-        }
-        type Row = { type: string; amount: number; currency: string; date: string; exchange_rate: number | null }
-        for (const tx of (data as Row[]) ?? []) {
-          const key = tx.date.slice(0, 7)
-          if (!buckets[key]) continue
-          const v = cvtTx(tx.amount, tx.currency, tx.exchange_rate)
-          if (tx.type === 'income')  buckets[key].income  += v
-          if (tx.type === 'expense') buckets[key].expense += v
-        }
-        setOverview(
-          Object.entries(buckets).map(([m, v]) => ({ month: m, ...v }))
-        )
-        setOverviewLoading(false)
-      })
-  }, [user, rates]) // eslint-disable-line react-hooks/exhaustive-deps
+  const overview: MonthBucket[] = useMemo(() => {
+    const buckets: Record<string, { income: number; expense: number }> = {}
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(NOW.getFullYear(), NOW.getMonth() - i, 1)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      buckets[key] = { income: 0, expense: 0 }
+    }
+    for (const tx of allTxs) {
+      if (tx.type !== 'expense' && tx.type !== 'income') continue
+      const key = tx.date.slice(0, 7)
+      if (!buckets[key]) continue
+      const v = cvtTx(tx.amount, tx.currency, tx.exchange_rate)
+      if (tx.type === 'income') buckets[key].income += v
+      if (tx.type === 'expense') buckets[key].expense += v
+    }
+    return Object.entries(buckets).map(([m, v]) => ({ month: m, ...v }))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allTxs, rates, baseCurrency])
+  const overviewLoading = txLoading
 
   // ── Tabs 2 & 3: Monthly txs ───────────────────────────────────────────
-  const [monthlyTxs, setMonthlyTxs]       = useState<TxDetail[]>([])
-  const [monthlyLoading, setMonthlyLoading] = useState(false)
-
-  useEffect(() => {
-    if (!user || tab === 'overview') return
-    setMonthlyLoading(true)
-    supabase
-      .from('transactions')
-      .select('id, type, amount, currency, description, date, category_id, exchange_rate, categories(name, icon)')
-      .eq('user_id', user.id)
-      .gte('date', monthStart(year, month))
-      .lt('date', monthEnd(year, month))
-      .in('type', ['expense', 'income'])
-      .then(({ data }) => {
-        setMonthlyTxs((data as TxDetail[]) ?? [])
-        setMonthlyLoading(false)
+  const monthlyTxs: TxDetail[] = useMemo(() => {
+    const start = monthStart(year, month)
+    const end = monthEnd(year, month)
+    const catMap = new Map(categories.map((c) => [c.id, c]))
+    return allTxs
+      .filter(
+        (t) =>
+          t.date >= start &&
+          t.date < end &&
+          (t.type === 'expense' || t.type === 'income'),
+      )
+      .map((t) => {
+        const c = catMap.get(t.category_id)
+        return {
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          currency: t.currency,
+          description: t.description,
+          date: t.date,
+          category_id: t.category_id,
+          exchange_rate: t.exchange_rate,
+          categories: c ? { name: c.name, icon: c.icon } : null,
+        } as TxDetail
       })
-  }, [user, year, month, tab]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [allTxs, categories, year, month])
+  const monthlyLoading = txLoading
 
   // daily expense buckets
   const dailyData = useMemo(() => {

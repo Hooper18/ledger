@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { X, Edit2, Trash2 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useTransactions } from '../hooks/useTransactions'
 import { CURRENCY_SYMBOLS } from '../types'
 import type { TxDetail, Currency } from '../types'
 
@@ -19,6 +19,7 @@ export default function TransactionSheet({ tx, displayCurrency, onClose, onDelet
   const navigate = useNavigate()
   const { rates } = useCurrency()
   const { t } = useLanguage()
+  const { remove: removeTx } = useTransactions()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
@@ -41,9 +42,10 @@ export default function TransactionSheet({ tx, displayCurrency, onClose, onDelet
 
   async function handleDelete() {
     setDeleting(true)
-    const { error } = await supabase.from('transactions').delete().eq('id', tx.id)
+    await removeTx(tx.id)
     setDeleting(false)
-    if (!error) { onDeleted(tx.id); onClose() }
+    onDeleted(tx.id)
+    onClose()
   }
 
   return createPortal(

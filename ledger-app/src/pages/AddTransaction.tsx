@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useTransactions } from '../hooks/useTransactions'
 import type { TransactionType, Currency, TxDetail } from '../types'
 import {
   EXPENSE_CATEGORIES,
@@ -38,6 +39,7 @@ export default function AddTransaction() {
   const { user } = useAuth()
   const { defaultCurrency, baseCurrency, rates } = useCurrency()
   const { t } = useLanguage()
+  const { insert: insertTx, update: updateTx } = useTransactions()
 
   // Edit mode: location.state.tx is set when navigating from TransactionSheet
   const editTx = (location.state as { tx?: TxDetail } | null)?.tx
@@ -139,15 +141,16 @@ export default function AddTransaction() {
       exchange_rate,
     }
 
-    let error
+    // 写操作走本地 outbox：UI 立刻更新，背景同步到 Supabase。离线时
+    // 同样能记账，恢复网络后队列自动 push。所以这里没有真正的"网络
+    // 错误"路径 —— insert/update 总是 resolve。
     if (editTx) {
-      ;({ error } = await supabase.from('transactions').update(payload).eq('id', editTx.id))
+      await updateTx(editTx.id, payload)
     } else {
-      ;({ error } = await supabase.from('transactions').insert({ ...payload, user_id: user.id }))
+      await insertTx(payload)
     }
 
     setSubmitting(false)
-    if (error) { showToast(t('saveFailed') + error.message); return }
 
     if (editTx) {
       navigate(-1)   // return to wherever edit was triggered from

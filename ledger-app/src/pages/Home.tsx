@@ -1,10 +1,12 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { ChevronLeft, ChevronRight, ChevronDown, Search, SlidersHorizontal, X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useTransactions } from '../hooks/useTransactions'
+import { useCategories } from '../hooks/useCategories'
+import { useBudgets } from '../hooks/useBudgets'
 import { CURRENCY_SYMBOLS, SUPPORTED_CURRENCIES } from '../types'
 import type { Currency, TxDetail, TransactionType } from '../types'
 import type { TranslationKey } from '../lib/i18n'
@@ -94,39 +96,42 @@ const { user } = useAuth()
     setMonth(m); setYear(y)
   }
 
-  // ── fetch transactions ──
-  const [transactions, setTransactions] = useState<TxDetail[]>([])
-  const [loading, setLoading] = useState(true)
+  // ── 数据来自 hooks（全量缓存，月份切换在客户端过滤） ──
+  const { transactions: allTxs, loading: txLoading } = useTransactions()
+  const { categories } = useCategories()
 
-  function fetchTransactions() {
-    if (!user) return
-    setLoading(true)
+  const transactions: TxDetail[] = useMemo(() => {
     const start = `${year}-${String(month).padStart(2, '0')}-01`
     const nm = month === 12 ? 1 : month + 1
     const ny = month === 12 ? year + 1 : year
     const end = `${ny}-${String(nm).padStart(2, '0')}-01`
-
-    supabase
-      .from('transactions')
-      .select('id, type, amount, currency, description, date, category_id, exchange_rate, categories(name, icon)')
-      .eq('user_id', user.id)
-      .gte('date', start)
-      .lt('date', end)
-      .order('date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (!error && data) setTransactions(data as TxDetail[])
-        setLoading(false)
+    const catMap = new Map(categories.map((c) => [c.id, c]))
+    return allTxs
+      .filter((t) => t.date >= start && t.date < end)
+      .map((t) => {
+        const c = catMap.get(t.category_id)
+        return {
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          currency: t.currency,
+          description: t.description,
+          date: t.date,
+          category_id: t.category_id,
+          exchange_rate: t.exchange_rate,
+          categories: c ? { name: c.name, icon: c.icon } : null,
+        } as TxDetail
       })
-  }
+  }, [allTxs, categories, year, month])
 
-  useEffect(() => { fetchTransactions() }, [user, year, month]) // eslint-disable-line react-hooks/exhaustive-deps
+  const loading = txLoading
 
   // ── selected transaction sheet ──
   const [selectedTx, setSelectedTx] = useState<TxDetail | null>(null)
 
-  function handleDeleted(id: string) {
-    setTransactions(prev => prev.filter(t => t.id !== id))
+  // hook 删除已经更新了全局 state，这里保留 noop 让 TransactionSheet 接口不变。
+  function handleDeleted(_id: string) {
+    /* useTransactions().remove 已经更新本地状态，无需再处理 */
   }
 
   // ── totals (always full month, unaffected by filter) ──
@@ -147,19 +152,16 @@ const { user } = useAuth()
   }
 
   // ── total budget (for home bar) ──
-  const [totalBudget, setTotalBudget] = useState<{ amount: number; currency: string } | null>(null)
-
-  useEffect(() => {
-    if (!user) return
+  // 注意：跟 Budget 页 period 用 'monthly' 不一致 —— 这里走 'YYYY-MM' 是
+  // 上线版老逻辑，先维持原样不动。
+  const { budgets: allBudgets } = useBudgets()
+  const totalBudget = useMemo(() => {
     const period = `${year}-${String(month).padStart(2, '0')}`
-    supabase.from('budgets')
-      .select('amount, currency')
-      .eq('user_id', user.id)
-      .eq('period', period)
-      .is('category_id', null)
-      .maybeSingle()
-      .then(({ data }) => setTotalBudget(data))
-  }, [user, year, month])
+    const b = allBudgets.find(
+      (x) => x.period === period && x.category_id === null,
+    )
+    return b ? { amount: b.amount, currency: b.currency } : null
+  }, [allBudgets, year, month])
 
   // ── search & filter state ──
   const [keyword, setKeyword]       = useState('')

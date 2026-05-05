@@ -1,11 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { ChevronLeft, Pencil, Plus, X } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useTransactions } from '../hooks/useTransactions'
+import { useCategories } from '../hooks/useCategories'
+import { useBudgets } from '../hooks/useBudgets'
 import { CURRENCY_SYMBOLS } from '../types'
 import type { Currency } from '../types'
 
@@ -27,17 +29,66 @@ export default function Budget() {
   const { user } = useAuth()
   const { baseCurrency, rates } = useCurrency()
   const { t, lang } = useLanguage()
+  const { transactions, loading: txLoading } = useTransactions()
+  const { categories: allCategories, loading: catLoading } = useCategories()
+  const {
+    budgets: allBudgets,
+    loading: budgetLoading,
+    upsert: upsertBudget,
+    remove: removeBudget,
+  } = useBudgets()
 
   const now   = new Date()
   const year  = now.getFullYear()
   const month = now.getMonth() + 1
   const period = 'monthly'
 
-  const [categories, setCategories] = useState<CategoryRow[]>([])
-  const [budgets, setBudgets]         = useState<BudgetRow[]>([])
-  const [catSpending, setCatSpending] = useState<Map<string, number>>(new Map())
-  const [totalSpent, setTotalSpent]   = useState(0)
-  const [loading, setLoading]         = useState(true)
+  // 只看 expense 类型的分类，按 name 排序，把外键查询的过滤逻辑搬到客户端
+  const categories: CategoryRow[] = useMemo(
+    () =>
+      allCategories
+        .filter((c) => c.type === 'expense')
+        .map((c) => ({ id: c.id, name: c.name, icon: c.icon }))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [allCategories],
+  )
+
+  // 只看当前 period 的 budgets
+  const budgets: BudgetRow[] = useMemo(
+    () =>
+      allBudgets
+        .filter((b) => b.period === period)
+        .map((b) => ({
+          id: b.id,
+          category_id: b.category_id,
+          amount: b.amount,
+          currency: b.currency,
+        })),
+    [allBudgets],
+  )
+
+  // 当月支出按 category 聚合 + 总支出
+  const { catSpending, totalSpent } = useMemo(() => {
+    const start = `${year}-${String(month).padStart(2, '0')}-01`
+    const nm = month === 12 ? 1 : month + 1
+    const ny = month === 12 ? year + 1 : year
+    const end = `${ny}-${String(nm).padStart(2, '0')}-01`
+    let total = 0
+    const map = new Map<string, number>()
+    for (const tx of transactions) {
+      if (tx.type !== 'expense') continue
+      if (tx.date < start || tx.date >= end) continue
+      const v = tx.exchange_rate != null
+        ? tx.amount / tx.exchange_rate
+        : convertTo(tx.amount, tx.currency)
+      total += v
+      map.set(tx.category_id, (map.get(tx.category_id) ?? 0) + v)
+    }
+    return { catSpending: map, totalSpent: total }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [transactions, year, month, baseCurrency, rates])
+
+  const loading = txLoading || catLoading || budgetLoading
 
   // Edit sheet: null = closed, '' = total budget, UUID = category budget
   const [editing, setEditing]     = useState<string | null>(null)
@@ -61,55 +112,6 @@ export default function Budget() {
     return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
 
-  async function fetchData() {
-    if (!user) return
-    setLoading(true)
-
-    const start = `${year}-${String(month).padStart(2, '0')}-01`
-    const nm    = month === 12 ? 1  : month + 1
-    const ny    = month === 12 ? year + 1 : year
-    const end   = `${ny}-${String(nm).padStart(2, '0')}-01`
-
-    const [catsRes, budgetsRes, txRes] = await Promise.all([
-      supabase.from('categories')
-        .select('id, name, icon')
-        .eq('user_id', user.id)
-        .eq('type', 'expense')
-        .order('name'),
-      supabase.from('budgets')
-        .select('id, category_id, amount, currency')
-        .eq('user_id', user.id)
-        .eq('period', period),
-      supabase.from('transactions')
-        .select('amount, currency, category_id, exchange_rate')
-        .eq('user_id', user.id)
-        .eq('type', 'expense')
-        .gte('date', start)
-        .lt('date', end),
-    ])
-
-    if (catsRes.data)    setCategories(catsRes.data as CategoryRow[])
-    if (budgetsRes.data) setBudgets(budgetsRes.data as BudgetRow[])
-
-    if (txRes.data) {
-      let total = 0
-      const map = new Map<string, number>()
-      for (const tx of txRes.data as { amount: number; currency: string; category_id: string; exchange_rate: number | null }[]) {
-        const v = tx.exchange_rate != null
-          ? tx.amount / tx.exchange_rate
-          : convertTo(tx.amount, tx.currency)
-        total += v
-        map.set(tx.category_id, (map.get(tx.category_id) ?? 0) + v)
-      }
-      setTotalSpent(total)
-      setCatSpending(map)
-    }
-
-    setLoading(false)
-  }
-
-  useEffect(() => { fetchData() }, [user]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // category_id: null = total budget, UUID = category budget
   function getBudget(categoryId: string | null): BudgetRow | null {
     return budgets.find(b => b.category_id === categoryId) ?? null
@@ -128,18 +130,12 @@ export default function Budget() {
 
     setSaving(true)
     const category_id = editing === '' ? null : editing
-
-    const { data, error } = await supabase.from('budgets').upsert(
-      { user_id: user.id, category_id, amount, currency: baseCurrency as string, period } as any,
-      { onConflict: 'user_id,period,category_id' },
-    ).select()
-
-    if (error) {
-      setSaving(false)
-      return
-    }
-
-    await fetchData()
+    await upsertBudget({
+      category_id,
+      amount,
+      currency: baseCurrency as string,
+      period,
+    })
     setSaving(false)
     setEditing(null)
   }
@@ -149,12 +145,7 @@ export default function Budget() {
     const category_id = editing === '' ? null : editing
     const b = getBudget(category_id)
     if (!b) return
-
-    const { error } = await supabase.from('budgets').delete().eq('id', b.id)
-    if (error) {
-      return
-    }
-    await fetchData()
+    await removeBudget(b.id)
     setEditing(null)
   }
 

@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { supabase } from '../lib/supabase'
-import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useTransactions } from '../hooks/useTransactions'
+import { useCategories } from '../hooks/useCategories'
 import { CURRENCY_SYMBOLS } from '../types'
 import type { Currency, TxDetail } from '../types'
 import type { TranslationKey } from '../lib/i18n'
@@ -30,9 +30,10 @@ function buildCalendarDays(year: number, month: number): (number | null)[] {
 function pad2(n: number) { return String(n).padStart(2, '0') }
 
 export default function Calendar() {
-  const { user } = useAuth()
   const { baseCurrency, rates } = useCurrency()
   const { t } = useLanguage()
+  const { transactions: allTxs, loading: txLoading } = useTransactions()
+  const { categories } = useCategories()
 
   const displayCurrency = (localStorage.getItem(LS_KEY) as Currency) ?? 'CNY'
 
@@ -66,29 +67,31 @@ export default function Calendar() {
     setMonth(m); setYear(y)
   }
 
-  // ── fetch transactions for current month ──
-  const [transactions, setTransactions] = useState<TxDetail[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    if (!user) return
-    setLoading(true)
+  // ── 数据来自 hooks（全量缓存，月份切换在客户端过滤） ──
+  const transactions: TxDetail[] = useMemo(() => {
     const start = `${year}-${pad2(month)}-01`
     const nm = month === 12 ? 1 : month + 1
     const ny = month === 12 ? year + 1 : year
     const end = `${ny}-${pad2(nm)}-01`
-
-    supabase
-      .from('transactions')
-      .select('id, type, amount, currency, description, date, category_id, exchange_rate, categories(name, icon)')
-      .eq('user_id', user.id)
-      .gte('date', start)
-      .lt('date', end)
-      .then(({ data, error }) => {
-        if (!error && data) setTransactions(data as TxDetail[])
-        setLoading(false)
+    const catMap = new Map(categories.map((c) => [c.id, c]))
+    return allTxs
+      .filter((t) => t.date >= start && t.date < end)
+      .map((t) => {
+        const c = catMap.get(t.category_id)
+        return {
+          id: t.id,
+          type: t.type,
+          amount: t.amount,
+          currency: t.currency,
+          description: t.description,
+          date: t.date,
+          category_id: t.category_id,
+          exchange_rate: t.exchange_rate,
+          categories: c ? { name: c.name, icon: c.icon } : null,
+        } as TxDetail
       })
-  }, [user, year, month])
+  }, [allTxs, categories, year, month])
+  const loading = txLoading
 
   // ── aggregate by date ──
   type DaySummary = { expense: number; income: number; txList: TxDetail[] }
