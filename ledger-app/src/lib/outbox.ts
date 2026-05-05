@@ -93,3 +93,37 @@ export function subscribe(cb: () => void): () => void {
   window.addEventListener(EVENT_NAME, cb)
   return () => window.removeEventListener(EVENT_NAME, cb)
 }
+
+/**
+ * 把 outbox 里 pending 的写入"叠加"到服务端拉回来的数据上 —— 解决"刚写
+ * 完离线，hook reload 拉回的服务端响应（实际是 SW 旧缓存）把本地写入冲
+ * 没了"这种竞态。push 完成后 outbox 是空的，这函数等同于直接返回 rows。
+ */
+export function applyOutboxTo<T extends { id: string }>(
+  table: OutboxTable,
+  rows: T[],
+): T[] {
+  const pending = read().filter((e) => e.table === table)
+  if (pending.length === 0) return rows
+  const map = new Map<string, T>(rows.map((r) => [r.id, r]))
+  for (const entry of pending) {
+    if (entry.op === 'insert' && entry.row) {
+      const r = entry.row as unknown as T
+      map.set(r.id, r)
+    } else if (entry.op === 'update' && entry.rowId && entry.row) {
+      const existing = map.get(entry.rowId)
+      if (existing) {
+        map.set(entry.rowId, { ...existing, ...(entry.row as object) } as T)
+      }
+      // update 目标不在服务端数据里 —— 可能服务端那行已经被别的设备删掉，
+      // 我们的 update 推上去会失败。保守起见这条不显示。
+    } else if (entry.op === 'upsert' && entry.row) {
+      const r = entry.row as unknown as T
+      const existing = map.get(r.id)
+      map.set(r.id, existing ? ({ ...existing, ...(entry.row as object) } as T) : r)
+    } else if (entry.op === 'delete' && entry.rowId) {
+      map.delete(entry.rowId)
+    }
+  }
+  return Array.from(map.values())
+}

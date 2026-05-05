@@ -37,6 +37,12 @@ export function useTransactions() {
       setLoading(false)
       return
     }
+    // 离线时 skip：留住 useState 初始 cache（包含 outbox 写入）。否则
+    // fetch → SW 旧缓存 → setTransactions(旧) 会把本地刚写的覆盖掉。
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setLoading(false)
+      return
+    }
     setError(null)
     const { data, error } = await supabase
       .from('transactions')
@@ -46,7 +52,9 @@ export function useTransactions() {
       .order('created_at', { ascending: false })
     if (error) setError(error.message)
     if (!error && data) {
-      const list = data as DbTransaction[]
+      // 把服务端数据跟 outbox 里 pending 的本地写入合并 —— 兜底防 SW
+      // 慢网下 NetworkFirst timeout 回退到旧缓存导致丢写入。
+      const list = outbox.applyOutboxTo('transactions', data as DbTransaction[])
       setTransactions(list)
       saveCache(CACHE_KEY, list)
       setLastSyncedAt(recordSync('transactions'))

@@ -28,6 +28,10 @@ export function useBudgets() {
       setLoading(false)
       return
     }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setLoading(false)
+      return
+    }
     setError(null)
     const { data, error } = await supabase
       .from('budgets')
@@ -35,7 +39,7 @@ export function useBudgets() {
       .eq('user_id', user.id)
     if (error) setError(error.message)
     if (!error && data) {
-      const list = data as DbBudget[]
+      const list = outbox.applyOutboxTo('budgets', data as DbBudget[])
       setBudgets(list)
       saveCache(CACHE_KEY, list)
       setLastSyncedAt(recordSync('budgets'))

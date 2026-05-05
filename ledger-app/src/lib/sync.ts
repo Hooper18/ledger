@@ -104,9 +104,13 @@ function classifyError(err: { message?: string; code?: string }): boolean {
 
 /**
  * 顺序刷 outbox 队列。失败的留在原位，下次再试。
+ * 至少有一条成功推送时，清掉 supabase-api 的 SW 缓存 —— 因为接下来
+ * pull 用 NetworkFirst，网络慢时会 timeout 回退到旧缓存（里面不含刚
+ * push 的数据），UI 会被旧数据覆盖，看起来"同步按钮没用"。
  */
 export async function pushOutbox(): Promise<void> {
   setState('pushing')
+  let pushedAny = false
   try {
     // 复制 list，因为期间可能有新条目入队
     const snapshot = outbox.list()
@@ -114,6 +118,7 @@ export async function pushOutbox(): Promise<void> {
       const ok = await flushOne(entry)
       if (ok) {
         outbox.remove(entry.id)
+        pushedAny = true
       } else {
         outbox.bumpRetry(entry.id)
         // 一旦遇到网络失败，停止后续尝试 —— 网都断了再发也是徒劳
@@ -122,6 +127,22 @@ export async function pushOutbox(): Promise<void> {
     }
   } finally {
     setState('idle')
+  }
+  if (pushedAny) {
+    await invalidateSupabaseCache()
+  }
+}
+
+/**
+ * 清掉 Workbox runtime cache 里的 supabase-api。push 完成后调一次，
+ * 强迫接下来的 pull 走真网络拿到包含刚 push 的最新数据。
+ */
+async function invalidateSupabaseCache(): Promise<void> {
+  if (typeof caches === 'undefined') return
+  try {
+    await caches.delete('supabase-api')
+  } catch {
+    // 不可用就算了，不影响主流程
   }
 }
 

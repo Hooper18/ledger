@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { recordSync, readSync } from '../lib/lastSync'
 import { loadCache, saveCache } from '../lib/dataCache'
 import { subscribeRefresh } from '../lib/sync'
+import * as outbox from '../lib/outbox'
 import type { Database } from '../lib/database.types'
 
 export type DbCategory = Database['public']['Tables']['categories']['Row']
@@ -30,6 +31,10 @@ export function useCategories() {
       setLoading(false)
       return
     }
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setLoading(false)
+      return
+    }
     setError(null)
     const { data, error } = await supabase
       .from('categories')
@@ -38,7 +43,7 @@ export function useCategories() {
       .order('created_at', { ascending: true })
     if (error) setError(error.message)
     if (!error && data) {
-      const list = data as DbCategory[]
+      const list = outbox.applyOutboxTo('categories', data as DbCategory[])
       setCategories(list)
       saveCache(CACHE_KEY, list)
       setLastSyncedAt(recordSync('categories'))
