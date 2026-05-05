@@ -3,6 +3,7 @@ import { lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { useSemesterBootstrap } from './hooks/useSemesterBootstrap'
+import { useDataPrefetch } from './hooks/useDataPrefetch'
 import InviteRedemptionBanner from './components/InviteRedemptionBanner'
 
 const AuthPage = lazy(() => import('./pages/Auth'))
@@ -28,6 +29,9 @@ function Loading({ message }: { message?: string }) {
 function Protected({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
   const { done: bootstrapDone, error: bootstrapError } = useSemesterBootstrap()
+  // 在登录后启动数据预取：把所有页面的读接口和懒加载 chunk 提前灌进
+  // Workbox 缓存，离线时各页面才有得显示。
+  useDataPrefetch()
   if (loading) return <Loading />
   if (!user) return <Navigate to="/auth" replace />
   if (!bootstrapDone) return <Loading message="正在为你初始化学期数据…" />
