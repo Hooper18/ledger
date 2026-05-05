@@ -16,6 +16,7 @@ import {
   CurrentClassCard,
   NextClassCard,
 } from '../components/shared/ClassStatusCards'
+import EventModal from '../components/shared/EventModal'
 import TopupModal from '../components/TopupModal'
 import {
   computeCurrentAndNext,
@@ -45,9 +46,10 @@ function dateHeading(d: Date): string {
 export default function Home() {
   const { semester, loading: semLoading } = useSemester()
   const { courses, schedule } = useCourses(semester?.id)
-  const { events } = useEvents(semester?.id)
+  const { events, reload: reloadEvents } = useEvents(semester?.id)
   const { balance } = useBalance()
   const [topupOpen, setTopupOpen] = useState(false)
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   // `balance === 0` specifically (not a low-threshold check): we only want
   // to prompt brand-new users who haven't redeemed an invite code or been
   // topped up. Loading state (null) suppresses the banner to avoid flash.
@@ -168,13 +170,23 @@ export default function Home() {
             </div>
 
             <div className="space-y-4">
-              <UpcomingCard events={upcoming} courseMap={courseMap} />
+              <UpcomingCard
+                events={upcoming}
+                courseMap={courseMap}
+                onEdit={setEditingEvent}
+              />
               <QuickActions />
             </div>
           </div>
         )}
       </div>
       {topupOpen && <TopupModal onClose={() => setTopupOpen(false)} />}
+      <EventModal
+        event={editingEvent}
+        courses={courses}
+        onClose={() => setEditingEvent(null)}
+        onSaved={reloadEvents}
+      />
     </Layout>
   )
 }
@@ -246,9 +258,11 @@ function TodayScheduleCard({
 function UpcomingCard({
   events,
   courseMap,
+  onEdit,
 }: {
   events: Event[]
   courseMap: Record<string, Course>
+  onEdit: (event: Event) => void
 }) {
   return (
     <section className="bg-card rounded-xl border border-border p-4 shadow-sm">
@@ -278,9 +292,10 @@ function UpcomingCard({
                     : `${days} 天后`
             return (
               <li key={e.id}>
-                <Link
-                  to="/todo"
-                  className="block p-2 rounded-md hover:bg-hover transition-colors"
+                <button
+                  type="button"
+                  onClick={() => onEdit(e)}
+                  className="block w-full text-left p-2 rounded-md hover:bg-hover transition-colors"
                 >
                   <div className="flex items-start gap-2">
                     <span
@@ -300,7 +315,7 @@ function UpcomingCard({
                       </div>
                     </div>
                   </div>
-                </Link>
+                </button>
               </li>
             )
           })}
