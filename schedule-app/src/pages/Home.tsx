@@ -24,6 +24,9 @@ import {
 } from '../lib/sessionUtils'
 import { getDaysUntil, todayISO, typeColor, typeLabel } from '../lib/utils'
 import type { Course, Event, WeeklySchedule } from '../lib/types'
+import type { SyncKey } from '../lib/lastSync'
+
+const HOME_SYNC_KEYS: SyncKey[] = ['semester', 'courses', 'events']
 
 // Simple three-bucket greeting — morning / afternoon / evening. Anything
 // else (before dawn, very late) still folds into the nearest bucket rather
@@ -95,7 +98,7 @@ export default function Home() {
   const greeting = getGreeting(now.getHours())
 
   return (
-    <Layout title="首页">
+    <Layout title="首页" syncKeys={HOME_SYNC_KEYS}>
       <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24 md:pb-8 space-y-4 md:space-y-6">
         <section>
           <h1 className="text-xl md:text-3xl font-semibold text-text">

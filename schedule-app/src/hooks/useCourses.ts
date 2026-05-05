@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { recordSync, readSync } from '../lib/lastSync'
 import type { Course, WeeklySchedule } from '../lib/types'
 
 export function useCourses(semesterId: string | null | undefined) {
@@ -9,6 +10,9 @@ export function useCourses(semesterId: string | null | undefined) {
   const [schedule, setSchedule] = useState<WeeklySchedule[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
+    readSync('courses'),
+  )
 
   const load = useCallback(async () => {
     if (!user || !semesterId) {
@@ -45,6 +49,7 @@ export function useCourses(semesterId: string | null | undefined) {
     } else {
       setSchedule([])
     }
+    setLastSyncedAt(recordSync('courses'))
     setLoading(false)
   }, [user, semesterId])
 
@@ -52,5 +57,5 @@ export function useCourses(semesterId: string | null | undefined) {
     load()
   }, [load])
 
-  return { courses, schedule, loading, error, reload: load }
+  return { courses, schedule, loading, error, reload: load, lastSyncedAt }
 }

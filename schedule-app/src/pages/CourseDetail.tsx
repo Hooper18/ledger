@@ -8,6 +8,9 @@ import type { Event } from '../lib/types'
 import { useSemester } from '../hooks/useSemester'
 import { useCourses } from '../hooks/useCourses'
 import { useEvents } from '../hooks/useEvents'
+import type { SyncKey } from '../lib/lastSync'
+
+const SYNC_KEYS: SyncKey[] = ['courses', 'events']
 
 export default function CourseDetail() {
   const { id } = useParams<{ id: string }>()
@@ -46,7 +49,7 @@ export default function CourseDetail() {
 
   if (!course) {
     return (
-      <Layout title="Course" hideNav showBack onBack={() => navigate('/courses')}>
+      <Layout title="Course" hideNav showBack onBack={() => navigate('/courses')} syncKeys={SYNC_KEYS}>
         <div className="p-8 text-center text-dim">未找到课程。</div>
       </Layout>
     )
@@ -58,6 +61,7 @@ export default function CourseDetail() {
       hideNav
       showBack
       onBack={() => navigate('/courses')}
+      syncKeys={SYNC_KEYS}
     >
       <div className="p-4 space-y-5">
         <section className="p-4 rounded-xl bg-card border border-border">

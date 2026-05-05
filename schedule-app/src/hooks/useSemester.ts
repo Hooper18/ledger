@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { recordSync, readSync } from '../lib/lastSync'
 import type { Semester } from '../lib/types'
 
 export function useSemester() {
@@ -8,6 +9,9 @@ export function useSemester() {
   const [semester, setSemester] = useState<Semester | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
+    readSync('semester'),
+  )
 
   const load = useCallback(async () => {
     if (!user) {
@@ -27,6 +31,7 @@ export function useSemester() {
       .maybeSingle()
     if (error) setError(error.message)
     setSemester((data as Semester) ?? null)
+    if (!error) setLastSyncedAt(recordSync('semester'))
     setLoading(false)
   }, [user])
 
@@ -34,5 +39,5 @@ export function useSemester() {
     load()
   }, [load])
 
-  return { semester, loading, error, reload: load }
+  return { semester, loading, error, reload: load, lastSyncedAt }
 }

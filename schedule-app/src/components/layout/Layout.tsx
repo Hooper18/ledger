@@ -2,6 +2,9 @@ import type { ReactNode } from 'react'
 import Header from './Header'
 import BottomNav from './BottomNav'
 import DesktopSidebar from './DesktopSidebar'
+import OfflineBanner from './OfflineBanner'
+import { useLastSync } from '../../hooks/useLastSync'
+import type { SyncKey } from '../../lib/lastSync'
 
 interface Props {
   title: string
@@ -11,6 +14,11 @@ interface Props {
   showBack?: boolean
   onBack?: () => void
   /**
+   * 当前页关心的数据 key 列表。离线时 banner 显示其中最旧一份的更新时间。
+   * 省略则离线时只显示"离线"两个字。
+   */
+  syncKeys?: SyncKey[]
+  /**
    * When true, the page fills exactly the viewport height and the main
    * region clips overflow — the page-level scrollbar disappears and the
    * inner component is responsible for its own scrolling region(s) and
@@ -19,6 +27,8 @@ interface Props {
   fixedHeight?: boolean
 }
 
+const NO_KEYS: SyncKey[] = []
+
 export default function Layout({
   title,
   children,
@@ -26,8 +36,11 @@ export default function Layout({
   hideNav,
   showBack,
   onBack,
+  syncKeys,
   fixedHeight,
 }: Props) {
+  const lastSyncedAt = useLastSync(syncKeys ?? NO_KEYS)
+
   const rootCls = fixedHeight
     ? 'h-dvh overflow-hidden flex flex-col bg-main text-text'
     : 'min-h-screen flex flex-col bg-main text-text'
@@ -47,6 +60,7 @@ export default function Layout({
         showBack={showBack}
         onBack={onBack}
       />
+      <OfflineBanner lastSyncedAt={lastSyncedAt} />
       <div className={innerCls}>
         {!hideNav && <DesktopSidebar />}
         <main className={mainCls}>{children}</main>

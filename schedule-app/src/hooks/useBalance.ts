@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { recordSync, readSync } from '../lib/lastSync'
 
 // Note: DB column names are `balance_cny` / `amount_cny` for legacy reasons
 // (the system started out priced in RMB). The stored numbers are USD now;
@@ -19,6 +20,9 @@ export function useBalance() {
   const [transactions, setTransactions] = useState<BalanceTransaction[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
+    readSync('balance'),
+  )
 
   const reload = useCallback(async () => {
     if (!user) {
@@ -45,6 +49,9 @@ export function useBalance() {
     else setBalance(bRes.data ? Number(bRes.data.balance_cny) : 0)
     if (tRes.error) setError((e) => e ?? tRes.error!.message)
     else setTransactions((tRes.data ?? []) as BalanceTransaction[])
+    if (!bRes.error && !tRes.error) {
+      setLastSyncedAt(recordSync('balance'))
+    }
     setLoading(false)
   }, [user])
 
@@ -52,5 +59,5 @@ export function useBalance() {
     reload()
   }, [reload])
 
-  return { balance, transactions, loading, error, reload }
+  return { balance, transactions, loading, error, reload, lastSyncedAt }
 }

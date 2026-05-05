@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
+import { recordSync, readSync } from '../lib/lastSync'
 import type { Event, EventStatus } from '../lib/types'
 
 export function useEvents(semesterId: string | null | undefined) {
@@ -8,6 +9,9 @@ export function useEvents(semesterId: string | null | undefined) {
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
+    readSync('events'),
+  )
 
   const load = useCallback(async () => {
     if (!user || !semesterId) {
@@ -27,6 +31,7 @@ export function useEvents(semesterId: string | null | undefined) {
       .order('sort_order')
     if (error) setError(error.message)
     setEvents((data ?? []) as Event[])
+    if (!error) setLastSyncedAt(recordSync('events'))
     setLoading(false)
   }, [user, semesterId])
 
@@ -58,5 +63,5 @@ export function useEvents(semesterId: string | null | undefined) {
     setEvents((prev) => prev.filter((e) => e.id !== id))
   }, [])
 
-  return { events, loading, error, reload: load, setStatus, remove }
+  return { events, loading, error, reload: load, setStatus, remove, lastSyncedAt }
 }
