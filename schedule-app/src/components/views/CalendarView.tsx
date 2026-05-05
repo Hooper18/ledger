@@ -357,20 +357,43 @@ export default function CalendarView() {
         />
       </div>
 
-      {/* Mobile-only: minimal bottom drawer. No title / navigation / event
-          list — the month grid already communicates that. Only renders when
-          the selected day actually has classes, so empty days stay clean.
+      {/* Mobile-only: bottom drawer for the selected day. Mobile cells are
+          tiny dots-only — without this drawer, the user can see "this day has
+          events" but not what they are. Renders events (tappable → EventModal)
+          and courses for the selected day, gated by the layer toggles.
           pb-36 leaves room for BottomNav (h-16) + safe-area so the last
-          class card isn't occluded by the nav bar. */}
-      {layers.showCourses && daySchedule.length > 0 && (
+          card isn't occluded by the nav bar. */}
+      {((layers.showEvents && selectedEvents.length > 0) ||
+        (layers.showCourses && daySchedule.length > 0)) && (
         // overscroll-contain prevents reach-boundary gestures from bubbling
         // up and dragging the month grid / page along on iOS & Android.
-        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-3 py-2 pb-36 md:hidden">
-          <DayCourseList
-            date={selected}
-            schedule={daySchedule}
-            courseMap={courseMap}
-          />
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain no-scrollbar px-3 py-2 pb-36 md:hidden space-y-3">
+          {layers.showEvents && selectedEvents.length > 0 && (
+            <section>
+              <h3 className="text-xs font-semibold tracking-wider text-muted uppercase mb-2">
+                事件 ({selectedEvents.length})
+              </h3>
+              <div className="space-y-2">
+                {selectedEvents.map((e) => (
+                  <EventCard
+                    key={e.id}
+                    event={e}
+                    course={e.course_id ? courseMap[e.course_id] : undefined}
+                    semester={semester}
+                    onToggle={setStatus}
+                    onEdit={setEditing}
+                  />
+                ))}
+              </div>
+            </section>
+          )}
+          {layers.showCourses && daySchedule.length > 0 && (
+            <DayCourseList
+              date={selected}
+              schedule={daySchedule}
+              courseMap={courseMap}
+            />
+          )}
         </div>
       )}
 
