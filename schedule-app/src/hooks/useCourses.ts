@@ -2,13 +2,16 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { recordSync, readSync } from '../lib/lastSync'
+import { loadCache, saveCache } from '../lib/dataCache'
 import type { Course, WeeklySchedule } from '../lib/types'
 
 export function useCourses(semesterId: string | null | undefined) {
   const { user } = useAuth()
-  const [courses, setCourses] = useState<Course[]>([])
-  const [schedule, setSchedule] = useState<WeeklySchedule[]>([])
-  const [loading, setLoading] = useState(true)
+  const cachedCourses = loadCache<Course[]>('courses') ?? []
+  const cachedSchedule = loadCache<WeeklySchedule[]>('schedule') ?? []
+  const [courses, setCourses] = useState<Course[]>(cachedCourses)
+  const [schedule, setSchedule] = useState<WeeklySchedule[]>(cachedSchedule)
+  const [loading, setLoading] = useState(cachedCourses.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
     readSync('courses'),
@@ -21,7 +24,6 @@ export function useCourses(semesterId: string | null | undefined) {
       setLoading(false)
       return
     }
-    setLoading(true)
     setError(null)
     const { data: courseData, error: courseErr } = await supabase
       .from('courses')
@@ -37,6 +39,7 @@ export function useCourses(semesterId: string | null | undefined) {
     }
     const list = (courseData ?? []) as Course[]
     setCourses(list)
+    saveCache('courses', list)
 
     if (list.length > 0) {
       const ids = list.map((c) => c.id)
@@ -45,9 +48,12 @@ export function useCourses(semesterId: string | null | undefined) {
         .select('*')
         .in('course_id', ids)
       if (schedErr) setError(schedErr.message)
-      setSchedule((sched ?? []) as WeeklySchedule[])
+      const schedList = (sched ?? []) as WeeklySchedule[]
+      setSchedule(schedList)
+      if (!schedErr) saveCache('schedule', schedList)
     } else {
       setSchedule([])
+      saveCache('schedule', [])
     }
     setLastSyncedAt(recordSync('courses'))
     setLoading(false)

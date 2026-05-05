@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { recordSync, readSync } from '../lib/lastSync'
+import { loadCache, saveCache } from '../lib/dataCache'
 import type { AcademicCalendar } from '../lib/types'
 
 export function useCalendar(semesterId: string | null | undefined) {
-  const [entries, setEntries] = useState<AcademicCalendar[]>([])
-  const [loading, setLoading] = useState(true)
+  const cached = loadCache<AcademicCalendar[]>('calendar') ?? []
+  const [entries, setEntries] = useState<AcademicCalendar[]>(cached)
+  const [loading, setLoading] = useState(cached.length === 0)
   const [error, setError] = useState<string | null>(null)
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
     readSync('calendar'),
@@ -17,7 +19,6 @@ export function useCalendar(semesterId: string | null | undefined) {
       setLoading(false)
       return
     }
-    setLoading(true)
     setError(null)
     const { data, error } = await supabase
       .from('academic_calendar')
@@ -25,8 +26,12 @@ export function useCalendar(semesterId: string | null | undefined) {
       .eq('semester_id', semesterId)
       .order('date', { ascending: true })
     if (error) setError(error.message)
-    setEntries((data ?? []) as AcademicCalendar[])
-    if (!error) setLastSyncedAt(recordSync('calendar'))
+    if (!error) {
+      const list = (data ?? []) as AcademicCalendar[]
+      setEntries(list)
+      saveCache('calendar', list)
+      setLastSyncedAt(recordSync('calendar'))
+    }
     setLoading(false)
   }, [semesterId])
 

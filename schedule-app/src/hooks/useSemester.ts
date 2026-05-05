@@ -2,12 +2,16 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { recordSync, readSync } from '../lib/lastSync'
+import { loadCache, saveCache } from '../lib/dataCache'
 import type { Semester } from '../lib/types'
 
 export function useSemester() {
   const { user } = useAuth()
-  const [semester, setSemester] = useState<Semester | null>(null)
-  const [loading, setLoading] = useState(true)
+  // 初始 state 直接从 localStorage 读上次的快照 —— 重载/下拉刷新时
+  // 第一次 render 就有数据，不会先闪一下空状态。
+  const cached = loadCache<Semester>('semester')
+  const [semester, setSemester] = useState<Semester | null>(cached)
+  const [loading, setLoading] = useState(!cached)
   const [error, setError] = useState<string | null>(null)
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(() =>
     readSync('semester'),
@@ -19,7 +23,6 @@ export function useSemester() {
       setLoading(false)
       return
     }
-    setLoading(true)
     setError(null)
     const { data, error } = await supabase
       .from('semesters')
@@ -30,8 +33,12 @@ export function useSemester() {
       .limit(1)
       .maybeSingle()
     if (error) setError(error.message)
-    setSemester((data as Semester) ?? null)
-    if (!error) setLastSyncedAt(recordSync('semester'))
+    if (!error) {
+      const next = (data as Semester) ?? null
+      setSemester(next)
+      saveCache('semester', next)
+      setLastSyncedAt(recordSync('semester'))
+    }
     setLoading(false)
   }, [user])
 
