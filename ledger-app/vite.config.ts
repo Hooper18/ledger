@@ -32,13 +32,17 @@ export default defineConfig({
             handler: 'NetworkOnly',
           },
           {
+            // 国内弱网/无网场景下要让用户上次开过的页面整学期都能离线访问，
+            // 缓存周期拉长到 30 天，最大条目数提到 200；networkTimeoutSeconds
+            // 缩到 3 秒，弱网下更快回退到本地数据（搭配 supabase.ts 里的
+            // fast offline abort 进一步 100ms 内回退）。
             urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-api',
-              networkTimeoutSeconds: 8,
+              networkTimeoutSeconds: 3,
               cacheableResponse: { statuses: [0, 200] },
-              expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 },
+              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
             },
           },
           {
