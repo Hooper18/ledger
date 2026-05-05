@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Trash2, AlertTriangle } from 'lucide-react'
 import Modal from './Modal'
 import { supabase } from '../../lib/supabase'
+import { useMutationGuard } from '../../hooks/useMutationGuard'
 import type { Course } from '../../lib/types'
 
 const PRESET_COLORS = [
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export default function CourseModal({ course, eventCount, onClose, onSaved }: Props) {
+  const guard = useMutationGuard()
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [nameFull, setNameFull] = useState('')
@@ -107,7 +109,9 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
             <button
               type="button"
               onClick={() => setConfirmDel(true)}
-              className="px-3 py-2.5 rounded-lg border border-red-500/40 text-red-500 hover:bg-red-500/10 text-sm font-medium flex items-center gap-1"
+              disabled={guard.disabled}
+              title={guard.title}
+              className="px-3 py-2.5 rounded-lg border border-red-500/40 text-red-500 hover:bg-red-500/10 text-sm font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Trash2 size={14} /> 删除
             </button>
@@ -123,7 +127,8 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
               <button
                 type="button"
                 onClick={del}
-                disabled={saving}
+                disabled={saving || guard.disabled}
+                title={guard.title}
                 className="px-3 py-2.5 rounded-lg bg-red-500 text-white text-sm font-medium disabled:opacity-60"
               >
                 确认删除
@@ -133,10 +138,11 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
           <button
             form="course-modal-form"
             type="submit"
-            disabled={saving}
+            disabled={saving || guard.disabled}
+            title={guard.title}
             className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60"
           >
-            {saving ? '保存中…' : '保存'}
+            {saving ? '保存中…' : guard.disabled ? '离线 · 暂不可保存' : '保存'}
           </button>
         </div>
       }

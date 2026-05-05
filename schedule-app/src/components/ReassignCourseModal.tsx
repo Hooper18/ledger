@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Check, Loader2, CheckCircle2 } from 'lucide-react'
 import Modal from './shared/Modal'
 import { supabase } from '../lib/supabase'
+import { useMutationGuard } from '../hooks/useMutationGuard'
 import type { Course } from '../lib/types'
 
 interface Props {
@@ -27,6 +28,7 @@ export default function ReassignCourseModal({
   hintCode,
   onDone,
 }: Props) {
+  const guard = useMutationGuard()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -198,12 +200,13 @@ export default function ReassignCourseModal({
             </button>
             <button
               type="button"
-              disabled={!selectedId || saving}
+              disabled={!selectedId || saving || guard.disabled}
+              title={guard.title}
               onClick={submit}
               className="flex-1 py-2 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-1.5"
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
-              确认关联
+              {guard.disabled ? '离线 · 暂不可关联' : '确认关联'}
             </button>
           </div>
         </div>

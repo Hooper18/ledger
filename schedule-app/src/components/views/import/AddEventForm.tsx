@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../contexts/AuthContext'
+import { useMutationGuard } from '../../../hooks/useMutationGuard'
 import type { Course, EventType } from '../../../lib/types'
 
 const EVENT_TYPES: { value: EventType; label: string }[] = [
@@ -25,6 +26,7 @@ interface Props {
 
 export default function AddEventForm({ semesterId, courses }: Props) {
   const { user } = useAuth()
+  const guard = useMutationGuard()
   const [courseId, setCourseId] = useState<string>('')
   const [title, setTitle] = useState('')
   const [type, setType] = useState<EventType>('deadline')
@@ -164,10 +166,11 @@ export default function AddEventForm({ semesterId, courses }: Props) {
 
       <button
         type="submit"
-        disabled={saving}
+        disabled={saving || guard.disabled}
+        title={guard.title}
         className="w-full py-3 rounded-lg bg-accent text-white font-medium disabled:opacity-60"
       >
-        {saving ? '保存中…' : '保存事件'}
+        {saving ? '保存中…' : guard.disabled ? '离线 · 暂不可保存' : '保存事件'}
       </button>
     </form>
   )

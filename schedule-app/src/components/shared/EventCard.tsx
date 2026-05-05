@@ -7,6 +7,7 @@ import {
   typeLabel,
   weekNumber,
 } from '../../lib/utils'
+import { useMutationGuard } from '../../hooks/useMutationGuard'
 
 interface Props {
   event: Event
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export default function EventCard({ event, course, semester, onToggle, onEdit }: Props) {
+  const guard = useMutationGuard()
   const done = event.status === 'completed'
   const days = getDaysUntil(event.date)
   const wk = event.week_number ?? (event.date ? weekNumber(event.date, semester) : null)
@@ -46,8 +48,10 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
             e.stopPropagation()
             onToggle(event.id, done ? 'pending' : 'completed')
           }}
+          disabled={guard.disabled}
+          title={guard.title}
           aria-label={done ? '标记未完成' : '标记完成'}
-          className={`mt-0.5 w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
+          className={`mt-0.5 w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
             done
               ? 'bg-accent border-accent text-white'
               : 'border-muted hover:border-accent'
@@ -142,8 +146,10 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
                 e.stopPropagation()
                 onToggle(event.id, 'pending')
               }}
+              disabled={guard.disabled}
+              title={guard.title}
               aria-label="撤销完成"
-              className="p-1.5 rounded hover:bg-hover text-muted"
+              className="p-1.5 rounded hover:bg-hover text-muted disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Undo2 size={14} />
             </button>

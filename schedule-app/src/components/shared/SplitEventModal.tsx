@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Modal from './Modal'
 import { supabase } from '../../lib/supabase'
+import { useMutationGuard } from '../../hooks/useMutationGuard'
 import type { Event } from '../../lib/types'
 
 interface Props {
@@ -90,6 +91,7 @@ function buildRows(count: number, stem: string, event: Event): RowDraft[] {
 }
 
 export default function SplitEventModal({ event, onClose, onSplit }: Props) {
+  const guard = useMutationGuard()
   const [count, setCount] = useState(2)
   const [rows, setRows] = useState<RowDraft[]>([])
   const [saving, setSaving] = useState(false)
@@ -218,10 +220,15 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
           <button
             type="button"
             onClick={confirm}
-            disabled={saving || rows.length < 2}
+            disabled={saving || rows.length < 2 || guard.disabled}
+            title={guard.title}
             className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60"
           >
-            {saving ? '拆分中…' : `确认拆分（${count} 条）`}
+            {saving
+              ? '拆分中…'
+              : guard.disabled
+                ? '离线 · 暂不可拆分'
+                : `确认拆分（${count} 条）`}
           </button>
         </div>
       }

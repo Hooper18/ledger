@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../contexts/AuthContext'
+import { useMutationGuard } from '../../../hooks/useMutationGuard'
 
 const PRESET_COLORS = [
   '#3B82F6',
@@ -20,6 +21,7 @@ interface Props {
 
 export default function AddCourseForm({ semesterId, onCreated }: Props) {
   const { user } = useAuth()
+  const guard = useMutationGuard()
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [lecturer, setLecturer] = useState('')
@@ -145,10 +147,11 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
 
       <button
         type="submit"
-        disabled={saving}
+        disabled={saving || guard.disabled}
+        title={guard.title}
         className="w-full py-3 rounded-lg bg-accent text-white font-medium disabled:opacity-60"
       >
-        {saving ? '保存中…' : '保存课程'}
+        {saving ? '保存中…' : guard.disabled ? '离线 · 暂不可保存' : '保存课程'}
       </button>
     </form>
   )
