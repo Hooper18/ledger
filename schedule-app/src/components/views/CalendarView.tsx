@@ -1,11 +1,13 @@
 import { Fragment, useEffect, useMemo, useState } from 'react'
-import { ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
+import { ChevronLeft, ChevronRight, MapPin, Plus } from 'lucide-react'
 import { useSemester } from '../../hooks/useSemester'
 import { useCourses } from '../../hooks/useCourses'
 import { useEvents } from '../../hooks/useEvents'
 import { useIsDesktop } from '../../hooks/useIsDesktop'
+import { useMutationGuard } from '../../hooks/useMutationGuard'
 import EventCard from '../shared/EventCard'
 import EventModal from '../shared/EventModal'
+import NewEventModal from '../shared/NewEventModal'
 import DayDetailPanel from './DayDetailPanel'
 import type { Event, Course, WeeklySchedule, EventType } from '../../lib/types'
 import {
@@ -183,11 +185,13 @@ export default function CalendarView() {
     }
   }
   const [editing, setEditing] = useState<Event | null>(null)
+  const [adding, setAdding] = useState(false)
   const [layers, setLayers] = useState<Layers>({
     showEvents: true,
     showCourses: true,
   })
   const [weekCursor, setWeekCursor] = useState<Date>(new Date())
+  const guard = useMutationGuard()
 
   const courseMap = useMemo(
     () => Object.fromEntries(courses.map((c) => [c.id, c])),
@@ -417,6 +421,33 @@ export default function CalendarView() {
         onClose={() => setEditing(null)}
         onSaved={reload}
       />
+
+      {/* 移动端浮动添加按钮 —— 桌面端有 DayDetailPanel 提供添加入口，
+          mobile 没有，所以只在 md 以下显示。bottom-20 给 BottomNav (h-14)
+          + safe area 留出空间。 */}
+      {semester && (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          disabled={guard.disabled}
+          title={guard.title}
+          aria-label="新建事件"
+          className="md:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-accent text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus size={24} />
+        </button>
+      )}
+
+      {semester && (
+        <NewEventModal
+          open={adding}
+          defaultDate={selected}
+          semesterId={semester.id}
+          courses={courses}
+          onClose={() => setAdding(false)}
+          onSaved={reload}
+        />
+      )}
     </div>
   )
 }
