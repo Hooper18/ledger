@@ -50,14 +50,17 @@ export default defineConfig({
           },
           {
             // Supabase REST / RPC — NetworkFirst，弱网下回退到上次结果。
+            // 学校弱网/无网场景下要保证用户上节课打开过的页面整学期都能离线访问，
+            // 所以缓存周期拉长到 30 天，条目数也提到 200；networkTimeoutSeconds
+            // 缩到 3 秒，弱网下更快回退到本地数据。
             urlPattern: /^https:\/\/.*\.supabase\.(co|in)\/rest\//,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'supabase-rest',
-              networkTimeoutSeconds: 5,
+              networkTimeoutSeconds: 3,
               expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 5 * 60,
+                maxEntries: 200,
+                maxAgeSeconds: 30 * 24 * 60 * 60,
               },
               cacheableResponse: { statuses: [0, 200] },
             },
