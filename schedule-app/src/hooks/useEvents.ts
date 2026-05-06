@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { recordSync, readSync } from '../lib/lastSync'
 import { loadCache, saveCache } from '../lib/dataCache'
+import { syncNotifications } from '../lib/notifications'
 import type { Event, EventStatus } from '../lib/types'
 
 export function useEvents(semesterId: string | null | undefined) {
@@ -36,6 +37,10 @@ export function useEvents(semesterId: string | null | undefined) {
       setEvents(list)
       saveCache('events', list)
       setLastSyncedAt(recordSync('events'))
+      // 拿到最新事件后顺手同步本地通知（仅在 Capacitor 原生上下文生效）。
+      syncNotifications(list).catch(() => {
+        // 通知失败不影响主流程，吞掉。
+      })
     }
     setLoading(false)
   }, [user, semesterId])
@@ -57,6 +62,8 @@ export function useEvents(semesterId: string | null | undefined) {
       setEvents((prev) => {
         const next = prev.map((e) => (e.id === id ? { ...e, status } : e))
         saveCache('events', next)
+        // 状态变成 completed/cancelled 后该事件不再需要提醒。
+        syncNotifications(next).catch(() => {})
         return next
       })
     },
@@ -72,6 +79,7 @@ export function useEvents(semesterId: string | null | undefined) {
     setEvents((prev) => {
       const next = prev.filter((e) => e.id !== id)
       saveCache('events', next)
+      syncNotifications(next).catch(() => {})
       return next
     })
   }, [])

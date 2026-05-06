@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   User,
-  Settings,
+  Bell,
   LogOut,
   Wallet,
   HelpCircle,
@@ -13,6 +13,7 @@ import { formatUSD, LOW_BALANCE_THRESHOLD_USD } from '../../lib/balance'
 import TopupModal from '../TopupModal'
 import HelpModal from '../HelpModal'
 import RedeemInviteModal from '../RedeemInviteModal'
+import NotificationSettingsModal from '../NotificationSettingsModal'
 
 export default function UserMenu() {
   const { user, signOut } = useAuth()
@@ -21,6 +22,7 @@ export default function UserMenu() {
   const [topupOpen, setTopupOpen] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
   const [redeemOpen, setRedeemOpen] = useState(false)
+  const [notifOpen, setNotifOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -115,13 +117,14 @@ export default function UserMenu() {
 
           <button
             type="button"
-            disabled
-            title="暂未开放"
-            className="w-full px-3 py-2.5 flex items-center gap-2 text-sm text-muted cursor-not-allowed"
+            onClick={() => {
+              setOpen(false)
+              setNotifOpen(true)
+            }}
+            className="w-full px-3 py-2.5 flex items-center gap-2 text-sm text-text hover:bg-hover transition-colors"
           >
-            <Settings size={14} />
-            <span>设置</span>
-            <span className="ml-auto text-[10px] text-muted">暂未开放</span>
+            <Bell size={14} className="text-dim" />
+            <span>事件提醒</span>
           </button>
 
           <div className="border-t border-border" />
@@ -146,6 +149,10 @@ export default function UserMenu() {
         onClose={() => setRedeemOpen(false)}
       />
       <HelpModal open={helpOpen} onClose={() => setHelpOpen(false)} />
+      <NotificationSettingsModal
+        open={notifOpen}
+        onClose={() => setNotifOpen(false)}
+      />
     </div>
   )
 }
