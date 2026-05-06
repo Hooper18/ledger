@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.tuchenguang.schedule",
+      "sha256_cert_fingerprints": [
+        "5E:F5:EB:70:CC:58:47:6A:04:8B:A6:68:F7:5A:8E:1E:B1:D0:45:B5:CF:6E:2F:77:9A:EE:1F:58:E1:9F:45:A4"
+      ]
+    }
+  }
+]
