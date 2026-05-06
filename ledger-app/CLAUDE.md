@@ -1,79 +1,131 @@
-# Ledger App - 口袋记账
+# 口袋记账（ledger-app）
+
+> 最后校准：2026-05-07，以代码为准重写。
 
 ## 项目概述
-将离线版 finance-app.html 移植为 React+Supabase 的在线记账应用。
+React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `finance-app.html` 离线原型（已不维护，保留参考）。
 
 ## 技术栈
-- React + TypeScript + Vite
-- Tailwind CSS
-- Supabase (Auth + PostgreSQL)
-- Chart.js
-- vite-plugin-pwa (Workbox)
+| 层 | 技术 |
+|----|------|
+| 框架 | React 18 + TypeScript 5 |
+| 构建 | Vite 5 + `@vitejs/plugin-react` |
+| 样式 | Tailwind CSS 3 |
+| 路由 | react-router-dom 6 |
+| 后端 | Supabase（Auth + PostgreSQL，全表 RLS） |
+| 图表 | chart.js 4 + react-chartjs-2 5（**未装 recharts**） |
+| PWA | vite-plugin-pwa（Workbox autoUpdate） |
+| 移动打包 | Capacitor 6（Android） |
+| 通知 | @capacitor/local-notifications 6 |
 
-## 数据库
-三张表：categories, transactions, budgets，全部开启 RLS。
-新用户注册时触发器自动创建默认分类（餐饮、交通、购物等）。
+## 数据库（4 张表）
 
-### budgets 表注意事项
-- `period` 字段只能是 `'monthly'` 或 `'yearly'`（check constraint）
-- `category_id = null` 表示月度总预算
-- upsert onConflict: `'user_id,period,category_id'`
-- NULL 值不触发 unique constraint，需在 Supabase 执行：
+以 `src/lib/database.types.ts` 为权威。
+
+| 表 | 关键字段 | 备注 |
+|----|---------|------|
+| `users_profile` | id, preferred_currency, default_currency, created_at, updated_at | 1:1 auth.users |
+| `categories` | id, user_id, name, type, icon, created_at | 用户级分类，**无 updated_at** |
+| `transactions` | id, user_id, type, amount, currency, **category_id** UUID, description, date, **exchange_rate**, created_at, updated_at | 流水 |
+| `budgets` | id, user_id, **category_id** (NULL=总预算), amount, currency, **period**, created_at | **无 updated_at** |
+
+全部启用 RLS：仅操作自己的行。
+
+### 触发器
+- **`handle_new_user`**：新用户注册 → 仅创建 `users_profile` 行，**不创建任何分类**。
+- 分类首次使用时由前端 `buildFallback()`（`src/pages/AddTransaction.tsx:29`）兜底返回默认列表。
+- `set_updated_at`：仅 `users_profile` / `transactions` 上挂触发器（`categories` / `budgets` 无 updated_at 列）。
+
+### budgets.period
+- 类型：`'monthly' | 'yearly'`（CHECK 约束 + `src/types/index.ts:34` 也定义为字面量联合类型）。
+- 当前代码只用 `'monthly'`（`src/pages/Budget.tsx:44`），`'yearly'` 为预留。
+- 唯一性：`(user_id, period, category_id)`，`category_id IS NULL` 表示总预算。
+- NULL 默认不参与 unique 约束，需手动建索引：
   ```sql
   CREATE UNIQUE INDEX budgets_user_period_category_unique
   ON budgets(user_id, period, category_id) NULLS NOT DISTINCT;
   ```
+- upsert onConflict：`'user_id,period,category_id'`（`src/hooks/useBudgets.ts:91`）。
 
-## 当前进度
-- [x] 项目骨架搭建
-- [x] Supabase 连接配置
-- [x] 数据库建表 + RLS
-- [x] 用户注册/登录
-- [x] 首页展示
-- [x] 记一笔页面（AddTransaction）
-- [x] 日历视图
-- [x] 统计图表
-- [x] 预算管理
-- [x] 多币种 + 汇率
-- [x] PWA 配置（vite-plugin-pwa，manifest，Service Worker，离线缓存）
-- [x] 部署到 Vercel：https://ledger-tusts.vercel.app
-- [x] 全局滚动修复
-- [x] 导航栏遮挡修复
-- [x] 记一笔键盘高度压缩
-- [x] 首页 header 改为风景图背景（图片：public/images/header-bg.jpg）
-- [x] 货币选择器改为完整列表并支持滚动（12种货币）
-- [x] PWA图标更新：红底白字"记账"，含192/512/maskable三个PNG
-- [x] 货币定义统一：所有币种集中在 types/index.ts，新增MOP澳门元
-- [x] 配置 Resend SMTP：smtp.resend.com:465，发件人 onboarding@resend.dev "口袋记账"，邮箱验证中文化
-- [x] 修复首页账单列表日期分组标签UTC偏移（今天/昨天标签整体慢一天）
-- [x] 修复日历页今日高亮UTC偏移（今天高亮停在昨天）
-- [x] 全局日期时区修复：用 localDateStr() 替代 toISOString()，避免UTC+8凌晨记账记到昨天
+## Migration
 
-## UI 修复记录
-- 删除首页底部"+ 记一笔"文字按钮（保留底部导航栏红色"+"圆形按钮）
-- 记账页面日期快捷按钮改为紧凑一行（py-1 text-xs），货币选择移至同行右侧
-- 所有页面头部顶部空白修复：pt-12 → pt-4（viewport 未设 viewport-fit=cover，safe-area-inset-top 为 0，pt-12 全为多余空白）
-- 全局滚动修复：html/body/#root 加 height:100%; overflow:hidden；Layout 改用 h-dvh
-- 导航栏遮挡修复：BottomNav 从 fixed 改为正常流（shrink-0），Layout main 去掉 pb-16
-- 记一笔键盘压缩：py-[10px]→py-[7px]，金额区 py-2.5→py-1.5，容器 pt-3→pt-2，gap-1.5→gap-1（共节省约 50px）
-- PWA 状态栏：theme-color 改为 #ffffff，viewport 加 viewport-fit=cover
+`supabase/migrations/001_initial_schema.sql` 是**当前生产 schema 的快照式 migration**（一次性建表，不再增量演进；新环境直接执行可得到与生产一致的结构）。
 
-## 待办（依赖阿里云实名认证通过）
-- [ ] 在 Resend 验证域名 pocketledger.top
+## 多币种与汇率（13 种货币）
+- 集中在 `src/types/index.ts`：
+  - `Currency` 联合类型
+  - `SUPPORTED_CURRENCIES` 数组
+  - `CURRENCY_SYMBOLS`、`CURRENCY_LABELS`
+- 现有：CNY · MYR · SGD · USD · HKD · JPY · EUR · GBP · THB · KHR · TWD · AUD · MOP
+- 添加新币种只改这一个文件 4 处。
+- 实时汇率：`https://api.exchangerate-api.com/v4/latest/CNY`，localStorage 缓存 1 小时（key: `ledger_fx_rates`）。
+- **存储时快照**：`AddTransaction.tsx` 把 currency→baseCurrency 的瞬时比率写入 `transactions.exchange_rate`。
+- **展示时还原**：`Home.tsx` 优先用 exchange_rate 还原本币，再按当前实时汇率转目标币种。
+
+> **已知 KHR 笔误**：`CURRENCY_SYMBOLS.KHR = '₫'`（越南盾符号），柬埔寨瑞尔正确符号是 `៛`。
+
+## 路由
+定义于 `src/App.tsx`，Provider 嵌套：`LanguageProvider → AuthProvider → CurrencyProvider`。
+
+| 路径 | 组件 | 备注 |
+|------|------|------|
+| `/auth` | Auth | 登录/注册，已登录自动跳 `/` |
+| `/` | Home | 受 ProtectedRoute 保护 |
+| `/add` | AddTransaction | hideNav |
+| `/calendar` | Calendar | |
+| `/charts` | Charts | |
+| `/budget` | Budget | hideNav |
+| `/settings` | Settings | |
+| `*` | redirect → `/` | |
+
+## i18n
+- 自定义 Context（`LanguageContext`），无第三方库。
+- `src/lib/i18n.ts`：zh/en 两个对象 + 强类型 `TranslationKey`。
+- 持久化 key：`ledger_lang`，默认 `'zh'`。
+- 支持插值：`t('budgetSubtitle', { year, month, currency })`。
+
+## 离线与同步
+- `src/lib/outbox.ts`：写操作先入队 localStorage，联网后批量 push。
+- `src/lib/sync.ts`：拉远端 + 推 outbox。
+- `src/lib/dataCache.ts`：每张表的快照 localStorage。
+- `src/lib/lastSync.ts`：每表最后同步时间。
+
+## 部署
+- Vercel：https://ledger-tusts.vercel.app
+- `vercel.json`：SPA 重写 + sw.js no-cache + assets 长缓存
+- 环境变量：`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`
+
+## 待办（依赖外部）
+- [ ] Resend 验证域名 pocketledger.top（依赖阿里云实名）
 - [ ] Vercel 绑定 pocketledger.top
-- [ ] Supabase SMTP 发件地址改为 noreply@pocketledger.top
+- [ ] Supabase SMTP 改 noreply@pocketledger.top
+- [ ] 校对 KHR 货币符号
+
+## 已知坑位
+- `database.types.ts` 是**手写**，未用 `supabase gen types`；改 schema 需手动同步。
+- categories / budgets 无 `updated_at` 列。
+- `src/lib/sync.ts:101` 的 `console.warn` 是**有意观测点**（不是调试残留）：当 outbox 写入被服务端拒绝（RLS / 唯一约束冲突等）时记录，等 toast 接入后再替换。
+- **Home / Budget 页 `period` 格式不一致**（已知，代码注释里也写了"先维持原样"）：
+  - `Budget.tsx:44` 写入 period = `'monthly'`
+  - `Home.tsx:159` 查询 period = `'YYYY-MM'`（如 `'2026-05'`）
+  - 后果：Home 顶部"总预算条"永远找不到 Budget 页保存的总预算。修复方向：Home 改用 `'monthly'` 字面值。
+- `src/types/index.ts:28` 的 `Budget` 接口是**死代码**（已被 `DbBudget` from `database.types.ts` 替代），无人引用，可删。
+
+## 历史修复记录（按时间倒序，便于回溯）
+- 全局日期 UTC 偏移修复：用 `localDateStr()` 替代 `toISOString()`，避免 UTC+8 凌晨记账记到昨天
+- 日历今日高亮 UTC 偏移修复
+- 配置 Resend SMTP（smtp.resend.com:465，发件人 onboarding@resend.dev "口袋记账"）
+- 货币定义统一收口到 `types/index.ts`，新增 MOP
+- PWA 图标：红底白字"记账"，含 192/512/maskable 三个 PNG
+- 全局滚动：html/body/#root 加 `height:100%; overflow:hidden`；Layout 用 `h-dvh`
+- BottomNav 从 `fixed` 改为正常流（`shrink-0`），Layout main 去掉 `pb-16`
+- 删除首页底部"+ 记一笔"文字按钮（保留导航栏 + 圆形按钮）
+- 记账页键盘高度压缩（py 缩窄共节省约 50px）
+- 各页 header `pt-12 → pt-4`（viewport 未设 viewport-fit=cover，safe-area-inset-top 为 0）
+- PWA 状态栏：theme-color = `#ffffff`，viewport 加 `viewport-fit=cover`
 
 ## GitHub
 Hooper18/ledger（main 分支）
 
-## 如何添加新币种
-只需修改 types/index.ts 一个文件，共4处：
-1. Currency 类型：补充 | 'XXX'
-2. SUPPORTED_CURRENCIES 数组：补充 'XXX'
-3. CURRENCY_SYMBOLS：补充 XXX: '符号'
-4. CURRENCY_LABELS：补充 XXX: '中文名 XXX'
-
-修改后全局自动生效，无需改动其他文件。
-
 ## 参考
-离线版源码：D:\VscodeProject\ClaudeCodeTest\finance-app.html
+离线版源码：`../finance-app.html`
