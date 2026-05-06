@@ -4,3 +4,9 @@ STEP1_*.md
 STEP1_*.sql
 STEP*_DIAGNOSIS.md
 STEP*_BACKUP.sql
+
+# Android keystores（永久密钥，丢了就再也升不了 APK 版本）
+.keystores-backup/
+twa-builds/
+**/android/app/release.keystore
+**/android/app/*.jks
