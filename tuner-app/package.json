@@ -11,12 +11,16 @@
     "generate-icons": "pwa-assets-generator"
   },
   "dependencies": {
+    "@capacitor/app": "^6.0.3",
     "i18next": "^26.0.8",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-i18next": "^17.0.6"
   },
   "devDependencies": {
+    "@capacitor/android": "^6.2.1",
+    "@capacitor/cli": "^6.2.1",
+    "@capacitor/core": "^6.2.1",
     "@eslint/js": "^10.0.1",
     "@tailwindcss/vite": "^4.2.4",
     "@types/node": "^24.12.2",

@@ -25,7 +25,7 @@ function StepperButton({
     <button
       onClick={onClick}
       aria-label={ariaLabel}
-      className="flex h-10 w-10 items-center justify-center rounded-full bg-elev-2 text-xl text-fg active:scale-95"
+      className="flex h-9 w-9 items-center justify-center rounded-full bg-elev-2 text-[18px] text-fg transition-opacity active:opacity-70"
     >
       {label}
     </button>
@@ -42,42 +42,46 @@ export function SettingsPanel({
 }: Props) {
   const { t } = useTranslation();
 
-  const langButton = (lang: Language, label: string) => (
-    <button
-      onClick={() => onLanguageChange(lang)}
-      className={`flex-1 rounded-xl border-2 py-3 text-base transition-colors ${
-        language === lang
-          ? 'border-accent bg-accent/10 font-medium text-accent'
-          : 'border-line bg-elev-2 text-fg-mute'
-      }`}
-    >
-      {label}
-    </button>
-  );
+  const langButton = (lang: Language, label: string) => {
+    const active = language === lang;
+    return (
+      <button
+        onClick={() => onLanguageChange(lang)}
+        className={`flex-1 rounded-xl py-2.5 text-[14px] transition-colors ${
+          active
+            ? 'bg-elev-2 font-medium text-fg'
+            : 'text-fg-mute hover:bg-elev-2 active:bg-elev-2'
+        }`}
+      >
+        {label}
+      </button>
+    );
+  };
 
   return (
     <BottomSheet open={open} onClose={onClose}>
-      <header className="flex items-center justify-between px-5 pt-3 pb-2">
-        <h2 className="text-lg font-medium text-fg">{t('settings.title')}</h2>
+      <header className="flex items-center justify-between px-5 pt-4 pb-3">
+        <h2 className="text-[18px] font-medium text-fg">{t('settings.title')}</h2>
         <button
           onClick={onClose}
           aria-label={t('settings.close')}
-          className="flex h-9 w-9 items-center justify-center rounded-full text-fg-mute active:bg-elev-2"
+          className="flex h-9 w-9 items-center justify-center rounded-full text-fg-mute transition-colors hover:bg-elev-2 active:bg-elev-2"
         >
-          <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-            <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+            <path d="M5 5l10 10M15 5L5 15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
         </button>
       </header>
 
-      <div className="space-y-7 px-5 pt-2 pb-6">
+      <div className="space-y-8 px-5 pt-2 pb-7">
         <section>
-          <div className="mb-2 flex items-baseline justify-between">
-            <label className="text-sm font-medium text-fg" htmlFor="a4-slider">
+          <div className="mb-3 flex items-baseline justify-between">
+            <label className="text-[14px] font-medium text-fg" htmlFor="a4-slider">
               {t('settings.a4Label')}
             </label>
-            <span className="font-mono text-base tabular-nums text-fg">
-              {a4} <span className="text-xs text-fg-mute">Hz</span>
+            <span className="font-mono text-[15px] tabular-nums text-fg">
+              {a4}
+              <span className="ml-1 text-[12px] text-fg-mute">Hz</span>
             </span>
           </div>
           <div className="flex items-center gap-3">
@@ -102,12 +106,12 @@ export function SettingsPanel({
               onClick={() => onA4Change(a4 + 1)}
             />
           </div>
-          <div className="mt-1 flex items-center justify-between text-xs text-fg-dim">
+          <div className="mt-2 flex items-center justify-between text-[12px] text-fg-dim">
             <span>{t('settings.a4Hint')}</span>
             {a4 !== A4_DEFAULT && (
               <button
                 onClick={() => onA4Change(A4_DEFAULT)}
-                className="text-fg-mute underline-offset-2 active:underline"
+                className="text-fg-mute transition-colors hover:text-fg active:text-fg"
               >
                 {A4_DEFAULT}
               </button>
@@ -116,20 +120,20 @@ export function SettingsPanel({
         </section>
 
         <section>
-          <span className="mb-2 block text-sm font-medium text-fg">
+          <span className="mb-3 block text-[14px] font-medium text-fg">
             {t('settings.language')}
           </span>
-          <div className="flex gap-3">
+          <div className="flex gap-2 rounded-xl bg-deep p-1">
             {langButton('zh', t('settings.languageZh'))}
             {langButton('en', t('settings.languageEn'))}
           </div>
         </section>
 
-        <section className="border-t border-line pt-4">
-          <span className="mb-1 block text-xs uppercase tracking-wide text-fg-dim">
+        <section className="border-t border-line pt-5">
+          <span className="mb-1.5 block text-[12px] uppercase tracking-wide text-fg-dim">
             {t('settings.about')}
           </span>
-          <p className="text-xs leading-relaxed text-fg-mute">
+          <p className="text-[12px] leading-relaxed text-fg-mute">
             {t('settings.aboutText')}
           </p>
         </section>

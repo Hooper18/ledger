@@ -1,27 +1,34 @@
 @import "tailwindcss";
 
 @theme {
-  --color-deep: #1a1a2e;
-  --color-elev: #232342;
-  --color-elev-2: #2d2d56;
-  --color-fg: #f5f5fa;
-  --color-fg-mute: #9ca3af;
-  --color-fg-dim: #5b5d76;
-  --color-accent: #4ade80;
-  --color-accent-warm: #fbbf24;
-  --color-accent-warn: #f97316;
-  --color-line: #3a3a5c;
+  /* Neutral dark palette inspired by ChatGPT/Claude dark mode + Apple HIG.
+     Layer differences are subtle — relying on slight value shifts, not borders/shadows. */
+  --color-deep: #1c1c1e;       /* app surface */
+  --color-elev: #2a2a2c;       /* one level up — chips, sheets, headstock body */
+  --color-elev-2: #353539;     /* selected / pressed surface */
+  --color-fg: #ececec;         /* primary text */
+  --color-fg-mute: #9a9aa1;    /* secondary text */
+  --color-fg-dim: #5b5d63;     /* tertiary, axes, ticks */
+  --color-dial: #5a5a5a;       /* dial arc + ticks — must read clearly as core UI */
+  --color-accent: #5fb874;     /* low-saturation success green */
+  --color-accent-dim: #3a6f48; /* deep accent for borders/fills */
+  --color-warn: #c87a4a;       /* muted orange for off-pitch */
+  --color-line: rgba(255, 255, 255, 0.10);
+  --color-line-strong: rgba(255, 255, 255, 0.22);
 }
 
 html,
 body,
 #root {
-  height: 100%;
+  height: 100vh;
+  height: 100dvh;
   margin: 0;
   background-color: var(--color-deep);
   color: var(--color-fg);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue",
-    sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior: none;
@@ -40,6 +47,7 @@ body {
   width: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 button {
@@ -48,18 +56,4 @@ button {
   border: 0;
   color: inherit;
   cursor: pointer;
-}
-
-@keyframes pulse-glow {
-  0%,
-  100% {
-    text-shadow: 0 0 12px rgba(74, 222, 128, 0.4);
-  }
-  50% {
-    text-shadow: 0 0 28px rgba(74, 222, 128, 0.85);
-  }
-}
-
-.glow-in-tune {
-  animation: pulse-glow 1.2s ease-in-out infinite;
 }

@@ -65,8 +65,8 @@ export function TunerScreen({ pitch, settings, update, playReferenceTone }: Prop
   };
 
   return (
-    <div className="flex h-full w-full flex-col">
-      <div className="flex h-[58%] flex-col">
+    <div className="flex h-full w-full flex-col overflow-hidden">
+      <div className="flex h-[45%] min-h-0 flex-col">
         <PitchIndicator
           pitch={pitch}
           target={target}
@@ -76,7 +76,7 @@ export function TunerScreen({ pitch, settings, update, playReferenceTone }: Prop
         />
       </div>
 
-      <div className="flex flex-1 flex-col border-t border-line bg-deep">
+      <div className="flex h-[55%] min-h-0 flex-col border-t border-line bg-deep">
         <GuitarHeadstock
           pitch={pitch}
           tuningNotes={tuning.notes}

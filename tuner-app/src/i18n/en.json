@@ -12,7 +12,7 @@
     "retry": "Try Again"
   },
   "tuner": {
-    "playStringHint": "Pluck a string",
+    "playStringHint": "Pluck a string to start tuning",
     "flat": "flat",
     "sharp": "sharp",
     "inTune": "In tune",
