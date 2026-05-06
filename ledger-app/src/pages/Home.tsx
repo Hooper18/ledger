@@ -152,16 +152,14 @@ const { user } = useAuth()
   }
 
   // ── total budget (for home bar) ──
-  // 注意：跟 Budget 页 period 用 'monthly' 不一致 —— 这里走 'YYYY-MM' 是
-  // 上线版老逻辑，先维持原样不动。
+  // period 跟 Budget.tsx 对齐：写入和查询都用 'monthly'。
   const { budgets: allBudgets } = useBudgets()
   const totalBudget = useMemo(() => {
-    const period = `${year}-${String(month).padStart(2, '0')}`
     const b = allBudgets.find(
-      (x) => x.period === period && x.category_id === null,
+      (x) => x.period === 'monthly' && x.category_id === null,
     )
     return b ? { amount: b.amount, currency: b.currency } : null
-  }, [allBudgets, year, month])
+  }, [allBudgets])
 
   // ── search & filter state ──
   const [keyword, setKeyword]       = useState('')

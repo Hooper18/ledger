@@ -105,10 +105,6 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
 - `database.types.ts` 是**手写**，未用 `supabase gen types`；改 schema 需手动同步。
 - categories / budgets 无 `updated_at` 列。
 - `src/lib/sync.ts:101` 的 `console.warn` 是**有意观测点**（不是调试残留）：当 outbox 写入被服务端拒绝（RLS / 唯一约束冲突等）时记录，等 toast 接入后再替换。
-- **Home / Budget 页 `period` 格式不一致**（已知，代码注释里也写了"先维持原样"）：
-  - `Budget.tsx:44` 写入 period = `'monthly'`
-  - `Home.tsx:159` 查询 period = `'YYYY-MM'`（如 `'2026-05'`）
-  - 后果：Home 顶部"总预算条"永远找不到 Budget 页保存的总预算。修复方向：Home 改用 `'monthly'` 字面值。
 - `src/types/index.ts:28` 的 `Budget` 接口是**死代码**（已被 `DbBudget` from `database.types.ts` 替代），无人引用，可删。
 
 ## 历史修复记录（按时间倒序，便于回溯）
