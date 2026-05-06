@@ -11,6 +11,7 @@ export type EventType =
   | 'holiday'
   | 'revision'
   | 'milestone'
+  | 'personal'
 
 export type EventSource =
   | 'manual'

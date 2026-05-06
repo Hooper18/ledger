@@ -7,6 +7,7 @@ import { useMutationGuard } from '../../hooks/useMutationGuard'
 import type { Course, Event, EventStatus, EventType } from '../../lib/types'
 
 const EVENT_TYPES: { value: EventType; label: string }[] = [
+  { value: 'personal', label: 'Personal' },
   { value: 'deadline', label: 'DDL' },
   { value: 'exam', label: 'Exam' },
   { value: 'midterm', label: 'Midterm' },

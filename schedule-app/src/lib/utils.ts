@@ -78,6 +78,7 @@ const TYPE_LABELS: Record<string, string> = {
   holiday: 'Holiday',
   revision: 'Revision',
   milestone: 'Milestone',
+  personal: 'Personal',
 }
 
 export function typeLabel(t: string): string {
@@ -97,6 +98,7 @@ const TYPE_COLORS: Record<string, string> = {
   holiday: 'bg-emerald-500/15 text-emerald-500',
   revision: 'bg-yellow-500/15 text-yellow-600',
   milestone: 'bg-indigo-500/15 text-indigo-500',
+  personal: 'bg-blue-500/15 text-blue-500',
 }
 
 export function typeColor(t: string): string {

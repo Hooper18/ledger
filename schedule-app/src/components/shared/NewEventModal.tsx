@@ -5,9 +5,10 @@ import { useAuth } from '../../contexts/AuthContext'
 import { useMutationGuard } from '../../hooks/useMutationGuard'
 import type { Course, EventType } from '../../lib/types'
 
-// 12 个 type 不全显示 —— 横向滚动一行 chip。常用四个排前面：DDL / Exam /
-// Quiz / Lab。点中后用 accent 框 + 浅色底高亮。
+// 13 个 type 不全显示 —— 横向滚动一行 chip。常用排前面：Personal（个人事项，
+// 如驾校学车、健身预约等）/ DDL / Exam。点中后用 accent 框 + 浅色底高亮。
 const TYPE_OPTIONS: { value: EventType; label: string; color: string }[] = [
+  { value: 'personal', label: 'Personal', color: '#3b82f6' },
   { value: 'deadline', label: 'DDL', color: '#f59e0b' },
   { value: 'exam', label: 'Exam', color: '#ef4444' },
   { value: 'quiz', label: 'Quiz', color: '#f97316' },
@@ -99,7 +100,8 @@ export default function NewEventModal({
     const { error } = await supabase.from('events').insert({
       user_id: user.id,
       semester_id: semesterId,
-      course_id: courseId || null,
+      // personal 事件强制不挂任何课程，避免切换 type 时残留之前选过的课。
+      course_id: type === 'personal' ? null : courseId || null,
       title: trimmed,
       type,
       date: date || null,
@@ -178,7 +180,7 @@ export default function NewEventModal({
           autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder='试着输入"作业 1"'
+          placeholder={type === 'personal' ? '试着输入"驾校学车"' : '试着输入"作业 1"'}
           className="w-full px-4 py-3.5 rounded-xl bg-card border border-border text-text placeholder:text-muted focus:outline-none focus:border-accent text-base"
         />
 
@@ -215,24 +217,26 @@ export default function NewEventModal({
           )}
         </div>
 
-        {/* 课程关联 */}
-        <div className="rounded-xl bg-card border border-border overflow-hidden">
-          <div className="px-4 py-3 flex items-center justify-between gap-3">
-            <span className="text-sm text-text shrink-0">关联课程</span>
-            <select
-              value={courseId}
-              onChange={(e) => setCourseId(e.target.value)}
-              className="flex-1 min-w-0 bg-transparent text-text text-sm text-right focus:outline-none"
-            >
-              <option value="">无</option>
-              {courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.code} {c.name}
-                </option>
-              ))}
-            </select>
+        {/* 课程关联 — Personal 是个人事项不属于任何课程，直接隐藏。 */}
+        {type !== 'personal' && (
+          <div className="rounded-xl bg-card border border-border overflow-hidden">
+            <div className="px-4 py-3 flex items-center justify-between gap-3">
+              <span className="text-sm text-text shrink-0">关联课程</span>
+              <select
+                value={courseId}
+                onChange={(e) => setCourseId(e.target.value)}
+                className="flex-1 min-w-0 bg-transparent text-text text-sm text-right focus:outline-none"
+              >
+                <option value="">无</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.code} {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* 备注 */}
         <div className="rounded-xl bg-card border border-border overflow-hidden">
