@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, ChevronRight, X, Check, Lock } from 'lucide-react'
+import { LogOut, ChevronRight, X, Check, Lock, Bell } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -10,8 +10,19 @@ import type { Lang } from '../lib/i18n'
 import { exportTransactionsCsv } from '../utils/exportCsv'
 import type { ExportRange } from '../utils/exportCsv'
 import PasswordInput from '../components/PasswordInput'
+import {
+  type ReminderSettings,
+  checkPermission,
+  getReminderSettings,
+  isNativeAvailable,
+  requestPermission,
+  saveReminderSettings,
+  syncReminder,
+} from '../lib/notifications'
 
-type ModalType = 'preferred' | 'default' | 'language' | 'changePwd' | 'export' | null
+type ModalType = 'preferred' | 'default' | 'language' | 'changePwd' | 'export' | 'reminder' | null
+
+function pad(n: number) { return n.toString().padStart(2, '0') }
 
 export default function Settings() {
   const navigate = useNavigate()
@@ -34,6 +45,42 @@ export default function Settings() {
   const [exportTo, setExportTo] = useState('')
   const [exportLoading, setExportLoading] = useState(false)
   const [exportMsg, setExportMsg] = useState<{ type: 'success' | 'nodata' | 'error'; text: string } | null>(null)
+
+  // Daily reminder
+  const [reminder, setReminder] = useState<ReminderSettings>(() => getReminderSettings())
+  const [reminderPermDenied, setReminderPermDenied] = useState(false)
+  const [reminderBusy, setReminderBusy] = useState(false)
+
+  useEffect(() => {
+    if (modal !== 'reminder') return
+    setReminder(getReminderSettings())
+    setReminderPermDenied(false)
+  }, [modal])
+
+  async function updateReminder(next: ReminderSettings) {
+    setReminderBusy(true)
+    setReminder(next)
+    saveReminderSettings(next)
+    setReminderPermDenied(false)
+
+    if (next.enabled && isNativeAvailable()) {
+      const granted = (await checkPermission()) || (await requestPermission())
+      if (!granted) {
+        setReminderPermDenied(true)
+        const fallback = { ...next, enabled: false }
+        setReminder(fallback)
+        saveReminderSettings(fallback)
+        setReminderBusy(false)
+        return
+      }
+    }
+
+    await syncReminder({
+      title: t('reminderNotifyTitle'),
+      body: t('reminderNotifyBody'),
+    }).catch(() => {})
+    setReminderBusy(false)
+  }
 
   async function handleSelect(c: Currency) {
     setSaving(true)
@@ -218,6 +265,25 @@ export default function Settings() {
           </button>
         </div>
 
+        {/* Daily reminder */}
+        <p className="px-5 pt-5 pb-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('reminderSection')}</p>
+        <div className="mx-4 bg-white rounded-2xl shadow-sm overflow-hidden">
+          <button
+            onClick={() => setModal('reminder')}
+            className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 text-left"
+          >
+            <Bell size={18} className="text-gray-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-800">{t('reminderLabel')}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{t('reminderDesc')}</p>
+            </div>
+            <span className="text-sm font-medium text-[#e53935] mr-1">
+              {reminder.enabled ? `${pad(reminder.hour)}:${pad(reminder.minute)}` : t('reminderOff')}
+            </span>
+            <ChevronRight size={16} className="text-gray-300 shrink-0" />
+          </button>
+        </div>
+
         {/* Account Security */}
         <p className="px-5 pt-5 pb-1.5 text-xs font-semibold text-gray-400 uppercase tracking-wide">{t('changePwdSection')}</p>
         <div className="mx-4 bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -283,6 +349,7 @@ export default function Settings() {
                 : modal === 'default'   ? t('selectDefaultCurrency')
                 : modal === 'language'  ? t('selectLanguage')
                 : modal === 'export'    ? t('dataExport')
+                : modal === 'reminder'  ? t('reminderTitle')
                 : t('changePwdTitle')}
               </h2>
               <button onClick={() => !(saving || pwdLoading || exportLoading) && setModal(null)} className="p-1.5 rounded-full hover:bg-gray-100">
@@ -291,7 +358,56 @@ export default function Settings() {
             </div>
 
             {/* Content */}
-            {modal === 'export' ? (
+            {modal === 'reminder' ? (
+              <div className="overflow-y-auto flex-1 px-4 pt-3 pb-6">
+                <div className="space-y-3">
+                  {!isNativeAvailable() && (
+                    <div className="flex items-start gap-2 bg-amber-50 text-amber-700 text-xs px-4 py-3 rounded-xl">
+                      <span className="shrink-0 mt-0.5">⚠️</span>
+                      <span>
+                        {t('reminderWebHint')}{' '}
+                        <a href="/apps" target="_blank" rel="noopener" className="underline">/apps</a>
+                      </span>
+                    </div>
+                  )}
+                  {reminderPermDenied && (
+                    <div className="flex items-start gap-2 bg-red-50 text-red-600 text-xs px-4 py-3 rounded-xl">
+                      <span className="shrink-0 mt-0.5">⚠️</span>
+                      <span>{t('reminderPermissionDenied')}</span>
+                    </div>
+                  )}
+
+                  <label className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3 cursor-pointer">
+                    <span className="text-sm text-gray-800">{t('reminderEnable')}</span>
+                    <input
+                      type="checkbox"
+                      checked={reminder.enabled}
+                      disabled={reminderBusy || !isNativeAvailable()}
+                      onChange={(e) =>
+                        updateReminder({ ...reminder, enabled: e.target.checked })
+                      }
+                      className="w-5 h-5 accent-[#e53935]"
+                    />
+                  </label>
+
+                  <div className="flex items-center justify-between bg-white border border-gray-200 rounded-xl px-4 py-3">
+                    <span className="text-sm text-gray-800">{t('reminderTime')}</span>
+                    <input
+                      type="time"
+                      value={`${pad(reminder.hour)}:${pad(reminder.minute)}`}
+                      disabled={reminderBusy || !reminder.enabled || !isNativeAvailable()}
+                      onChange={(e) => {
+                        const [h, m] = e.target.value.split(':').map(Number)
+                        if (Number.isFinite(h) && Number.isFinite(m)) {
+                          updateReminder({ ...reminder, hour: h, minute: m })
+                        }
+                      }}
+                      className="bg-transparent text-sm font-medium text-[#e53935] focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : modal === 'export' ? (
               <div className="overflow-y-auto flex-1 px-4 pt-3 pb-6">
                 <div className="space-y-3">
                   {/* Range options */}

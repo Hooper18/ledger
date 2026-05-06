@@ -1,8 +1,9 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { CurrencyProvider } from './contexts/CurrencyContext'
-import { LanguageProvider } from './contexts/LanguageContext'
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext'
+import { syncReminder } from './lib/notifications'
 import Layout from './components/layout/Layout'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
@@ -32,6 +33,16 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function AppRoutes() {
   const { user, loading } = useAuth()
+  const { t } = useLanguage()
+
+  // 启动时同步提醒计划 — 系统通知队列在重启/卸载后会丢，每次开 App 重新挂上。
+  useEffect(() => {
+    syncReminder({
+      title: t('reminderNotifyTitle'),
+      body: t('reminderNotifyBody'),
+    }).catch(() => {})
+  }, [t])
+
   if (loading) return <LoadingScreen />
 
   return (

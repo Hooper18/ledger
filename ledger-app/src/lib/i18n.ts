@@ -3,7 +3,7 @@ export type Lang = 'zh' | 'en'
 const zh = {
   // App
   appName: '口袋记账',
-  appVersion: '口袋记账 v0.1.0',
+  appVersion: '口袋记账 v0.2.0',
 
   // Common
   save: '保存',
@@ -130,6 +130,19 @@ const zh = {
   langZh: '中文',
   langEn: 'English',
 
+  // Daily reminder
+  reminderSection: '提醒',
+  reminderLabel: '每日记账提醒',
+  reminderDesc: '每天定时提醒你记账',
+  reminderTitle: '每日记账提醒',
+  reminderEnable: '启用提醒',
+  reminderTime: '提醒时间',
+  reminderNotifyTitle: '记账提醒',
+  reminderNotifyBody: '今天的账记了吗？',
+  reminderWebHint: '提醒只在安装的 Android APP 里生效，浏览器版无效。',
+  reminderPermissionDenied: '没有通知权限。请去系统设置里手动开启。',
+  reminderOff: '未开启',
+
   // Auth
   emailLabel: '邮箱',
   emailPlaceholder: '请输入邮箱地址',
@@ -213,7 +226,7 @@ const zh = {
 
 const en: typeof zh = {
   appName: 'Pocket Ledger',
-  appVersion: 'Pocket Ledger v0.1.0',
+  appVersion: 'Pocket Ledger v0.2.0',
 
   save: 'Save',
   saving: 'Saving…',
@@ -322,6 +335,17 @@ const en: typeof zh = {
   comingSoon: 'Coming Soon',
   signOut: 'Sign Out',
   languageSection: 'Language',
+  reminderSection: 'Reminders',
+  reminderLabel: 'Daily Logging Reminder',
+  reminderDesc: 'Remind me to log expenses at a chosen time',
+  reminderTitle: 'Daily Reminder',
+  reminderEnable: 'Enable',
+  reminderTime: 'Reminder Time',
+  reminderNotifyTitle: 'Logging Reminder',
+  reminderNotifyBody: 'Have you logged today\'s expenses?',
+  reminderWebHint: 'Reminders only work in the installed Android app, not in the browser.',
+  reminderPermissionDenied: 'Notification permission denied. Please enable it in system settings.',
+  reminderOff: 'Off',
   languageLabel: 'Language',
   languageDesc: 'Switch interface language',
   selectLanguage: 'Select Language',
