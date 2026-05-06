@@ -125,6 +125,8 @@ export async function syncNotifications(events: Event[]): Promise<void> {
           ? `${settings.advanceMinutes} 分钟后开始 · ${typeLabel(e.type)}`
           : `明天 · ${typeLabel(e.type)}`,
         schedule: { at: trigger },
+        // 用户点通知时，listener 拿到这个 eventId 用于路由
+        extra: { eventId: e.id },
       }
     })
     .filter((n): n is NonNullable<typeof n> => n !== null)
@@ -140,6 +142,28 @@ export async function syncNotifications(events: Event[]): Promise<void> {
   if (desired.length) {
     await LocalNotifications.schedule({ notifications: desired })
   }
+}
+
+// 用户点击通知后，eventId 存这里。App 启动后读取并跳转到 /todo（清掉 sessionStorage）。
+// 选 sessionStorage 而非 useNavigate：listener 在 React 上下文之外注册（main.tsx 启动时），
+// 拿不到 navigate；用 sessionStorage 中转 + App.tsx 内 useEffect 消费是最小耦合。
+export const PENDING_EVENT_KEY = 'schedule.pending.eventId'
+
+let listenerRegistered = false
+
+export async function setupNotificationClickHandler(): Promise<void> {
+  if (!isNativeAvailable() || listenerRegistered) return
+  listenerRegistered = true
+  await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+    const eventId = (action.notification.extra as { eventId?: string } | undefined)?.eventId
+    if (eventId) {
+      try {
+        sessionStorage.setItem(PENDING_EVENT_KEY, eventId)
+      } catch {
+        // sessionStorage 不可用就只能放弃 deep link，至少 app 已经被打开了
+      }
+    }
+  })
 }
 
 export async function cancelAll(): Promise<void> {

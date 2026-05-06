@@ -1,10 +1,11 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { lazy, Suspense } from 'react'
+import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-router-dom'
+import { lazy, Suspense, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { useSemesterBootstrap } from './hooks/useSemesterBootstrap'
 import { useDataPrefetch } from './hooks/useDataPrefetch'
 import InviteRedemptionBanner from './components/InviteRedemptionBanner'
+import { PENDING_EVENT_KEY } from './lib/notifications'
 
 const AuthPage = lazy(() => import('./pages/Auth'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
@@ -43,10 +44,31 @@ function Protected({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
 
+// 消费通知点击：原生 listener 把 eventId 写到 sessionStorage（main.tsx 启动时注册），
+// 这里在用户登录后读出来，路由到 /todo（先做最小版本，未来可以带 ?event=<id> 高亮具体事件）。
+function NotificationDeepLink() {
+  const { user } = useAuth()
+  const navigate = useNavigate()
+  useEffect(() => {
+    if (!user) return
+    try {
+      const id = sessionStorage.getItem(PENDING_EVENT_KEY)
+      if (id) {
+        sessionStorage.removeItem(PENDING_EVENT_KEY)
+        navigate('/todo', { replace: true })
+      }
+    } catch {
+      // sessionStorage 不可用则放弃 deep link
+    }
+  }, [user, navigate])
+  return null
+}
+
 function AppRoutes() {
   const { user, loading, isRecoverySession } = useAuth()
   return (
     <>
+      <NotificationDeepLink />
       {user && <InviteRedemptionBanner />}
       <Suspense fallback={<Loading />}>
         <Routes>
