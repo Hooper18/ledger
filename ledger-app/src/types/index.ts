@@ -25,17 +25,6 @@ export interface UserProfile {
   updated_at: string
 }
 
-export interface Budget {
-  id: string
-  user_id: string
-  category?: string  // undefined = total budget
-  amount: number
-  currency: Currency
-  period: 'monthly' | 'yearly'
-  created_at: string
-  updated_at: string
-}
-
 export const SUPPORTED_CURRENCIES: Currency[] = [
   'CNY', 'MYR', 'SGD', 'USD', 'HKD',
   'JPY', 'EUR', 'GBP', 'THB', 'KHR', 'TWD', 'AUD', 'MOP',
@@ -55,7 +44,7 @@ export interface TxDetail {
 
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   CNY: '¥', MYR: 'RM', SGD: 'S$', USD: '$', HKD: 'HK$',
-  JPY: '¥', EUR: '€', GBP: '£', THB: '฿', KHR: '₫', TWD: 'NT$', AUD: 'A$', MOP: 'MOP$',
+  JPY: '¥', EUR: '€', GBP: '£', THB: '฿', KHR: '៛', TWD: 'NT$', AUD: 'A$', MOP: 'MOP$',
 }
 
 export const CURRENCY_LABELS: Record<Currency, string> = {

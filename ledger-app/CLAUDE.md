@@ -62,8 +62,6 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
 - **存储时快照**：`AddTransaction.tsx` 把 currency→baseCurrency 的瞬时比率写入 `transactions.exchange_rate`。
 - **展示时还原**：`Home.tsx` 优先用 exchange_rate 还原本币，再按当前实时汇率转目标币种。
 
-> **已知 KHR 笔误**：`CURRENCY_SYMBOLS.KHR = '₫'`（越南盾符号），柬埔寨瑞尔正确符号是 `៛`。
-
 ## 路由
 定义于 `src/App.tsx`，Provider 嵌套：`LanguageProvider → AuthProvider → CurrencyProvider`。
 
@@ -99,13 +97,11 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
 - [ ] Resend 验证域名 pocketledger.top（依赖阿里云实名）
 - [ ] Vercel 绑定 pocketledger.top
 - [ ] Supabase SMTP 改 noreply@pocketledger.top
-- [ ] 校对 KHR 货币符号
 
 ## 已知坑位
 - `database.types.ts` 是**手写**，未用 `supabase gen types`；改 schema 需手动同步。
 - categories / budgets 无 `updated_at` 列。
 - `src/lib/sync.ts:101` 的 `console.warn` 是**有意观测点**（不是调试残留）：当 outbox 写入被服务端拒绝（RLS / 唯一约束冲突等）时记录，等 toast 接入后再替换。
-- `src/types/index.ts:28` 的 `Budget` 接口是**死代码**（已被 `DbBudget` from `database.types.ts` 替代），无人引用，可删。
 
 ## 历史修复记录（按时间倒序，便于回溯）
 - 全局日期 UTC 偏移修复：用 `localDateStr()` 替代 `toISOString()`，避免 UTC+8 凌晨记账记到昨天
