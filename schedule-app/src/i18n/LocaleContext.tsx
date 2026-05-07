@@ -9,6 +9,15 @@ import {
 import type { ReactNode } from 'react'
 import { zh } from './locales/zh'
 import { en } from './locales/en'
+import {
+  DEFAULT_SECTION_OVERRIDES,
+  readSectionOverrides,
+  sectionOf,
+  writeSectionOverrides,
+  type Section,
+  type SectionLocale,
+  type SectionOverrides,
+} from './sections'
 
 export type Locale = 'zh' | 'en'
 
@@ -32,6 +41,10 @@ export type TFn = (key: TKey, params?: TParams) => string
 interface LocaleContextValue {
   locale: Locale
   setLocale: (l: Locale) => void
+  // 类别级覆盖：{types/nav/actions: 'zh'|'en'|'auto'}
+  sectionOverrides: SectionOverrides
+  setSectionOverride: (section: Section, value: SectionLocale) => void
+  resetSectionOverrides: () => void
   t: TFn
 }
 
@@ -72,8 +85,24 @@ function interpolate(template: string, params?: TParams): string {
   )
 }
 
+// 给定 key + 主语言 + 类别覆盖，返回实际生效的 locale。
+function resolveLocale(
+  key: TKey,
+  main: Locale,
+  overrides: SectionOverrides,
+): Locale {
+  const section = sectionOf(key)
+  if (!section) return main
+  const override = overrides[section]
+  if (override === 'auto') return main
+  return override
+}
+
 export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => detectInitial())
+  const [sectionOverrides, setSectionOverridesState] = useState<SectionOverrides>(
+    () => readSectionOverrides(),
+  )
 
   const setLocale = useCallback((l: Locale) => {
     setLocaleState(l)
@@ -84,18 +113,39 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const setSectionOverride = useCallback(
+    (section: Section, value: SectionLocale) => {
+      setSectionOverridesState((prev) => {
+        const next = { ...prev, [section]: value }
+        writeSectionOverrides(next)
+        return next
+      })
+    },
+    [],
+  )
+
+  const resetSectionOverrides = useCallback(() => {
+    setSectionOverridesState(DEFAULT_SECTION_OVERRIDES)
+    writeSectionOverrides(DEFAULT_SECTION_OVERRIDES)
+  }, [])
+
   useEffect(() => {
     document.documentElement.lang = locale === 'zh' ? 'zh-CN' : 'en'
   }, [locale])
 
   const value = useMemo<LocaleContextValue>(() => {
-    const dict = dictionaries[locale]
     return {
       locale,
       setLocale,
-      t: (key, params) => interpolate(lookup(dict, key), params),
+      sectionOverrides,
+      setSectionOverride,
+      resetSectionOverrides,
+      t: (key, params) => {
+        const eff = resolveLocale(key, locale, sectionOverrides)
+        return interpolate(lookup(dictionaries[eff], key), params)
+      },
     }
-  }, [locale, setLocale])
+  }, [locale, setLocale, sectionOverrides, setSectionOverride, resetSectionOverrides])
 
   return <LocaleContext.Provider value={value}>{children}</LocaleContext.Provider>
 }
@@ -118,7 +168,10 @@ export function getActiveLocale(): Locale {
 
 // 静态版 t —— 没有 React 上下文时使用（通知正文、文件解析 throw 等）。
 // 每次调用都重新读 localStorage，所以语言切换后下次调用即生效。
+// 类别级覆盖也会被尊重。
 export const tStatic: TFn = (key, params) => {
-  const dict = dictionaries[detectInitial()]
-  return interpolate(lookup(dict, key), params)
+  const main = detectInitial()
+  const overrides = readSectionOverrides()
+  const eff = resolveLocale(key, main, overrides)
+  return interpolate(lookup(dictionaries[eff], key), params)
 }

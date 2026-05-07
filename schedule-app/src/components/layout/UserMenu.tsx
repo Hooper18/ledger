@@ -7,6 +7,7 @@ import {
   HelpCircle,
   Ticket,
   Languages,
+  Sliders,
 } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useBalance } from '../../hooks/useBalance'
@@ -17,6 +18,7 @@ import TopupModal from '../TopupModal'
 import HelpModal from '../HelpModal'
 import RedeemInviteModal from '../RedeemInviteModal'
 import NotificationSettingsModal from '../NotificationSettingsModal'
+import LocaleSettingsModal from '../LocaleSettingsModal'
 
 export default function UserMenu() {
   const { user, signOut } = useAuth()
@@ -28,6 +30,7 @@ export default function UserMenu() {
   const [helpOpen, setHelpOpen] = useState(false)
   const [redeemOpen, setRedeemOpen] = useState(false)
   const [notifOpen, setNotifOpen] = useState(false)
+  const [localeSettingsOpen, setLocaleSettingsOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -167,6 +170,18 @@ export default function UserMenu() {
             </div>
           </div>
 
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false)
+              setLocaleSettingsOpen(true)
+            }}
+            className="w-full px-3 py-2.5 flex items-center gap-2 text-sm text-text hover:bg-hover transition-colors"
+          >
+            <Sliders size={14} className="text-dim" />
+            <span>{t('userMenu.languageDetail')}</span>
+          </button>
+
           <div className="border-t border-border" />
 
           <button
@@ -192,6 +207,10 @@ export default function UserMenu() {
       <NotificationSettingsModal
         open={notifOpen}
         onClose={() => setNotifOpen(false)}
+      />
+      <LocaleSettingsModal
+        open={localeSettingsOpen}
+        onClose={() => setLocaleSettingsOpen(false)}
       />
     </div>
   )

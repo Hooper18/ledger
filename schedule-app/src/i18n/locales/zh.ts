@@ -29,6 +29,7 @@ export const zh = {
     notifications: '事件提醒',
     signOut: '登出',
     language: '语言',
+    languageDetail: '语言精细设置',
   },
   offline: {
     label: '离线',
@@ -749,6 +750,22 @@ export const zh = {
   password: {
     showAria: '显示密码',
     hideAria: '隐藏密码',
+  },
+  localeSettings: {
+    title: '语言精细设置',
+    intro: '主语言决定整体语言；下面三个类别可独立选不同语言，例如把"事件类型"设成英文（DDL/Exam 紧凑），其他保持中文。',
+    mainLocale: '主语言',
+    sectionTypes: '事件类型',
+    sectionTypesHint: '事件 chip / 筛选 / Moodle 标签：DDL · 考试 · 个人 …',
+    sectionNav: '导航与页面标题',
+    sectionNavHint: '底部导航 / 页面标题：首页 · 日历 · 待办 …',
+    sectionActions: '按钮与操作',
+    sectionActionsHint: '保存 · 取消 · 删除 · 完成 …',
+    optionAuto: '跟随主语言',
+    optionZh: '中文',
+    optionEn: 'English',
+    reset: '全部还原默认',
+    close: '完成',
   },
   notif: {
     defaultTitle: '事件提醒',

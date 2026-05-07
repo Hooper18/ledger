@@ -35,6 +35,7 @@ export const en: DeepStringify<typeof zh> = {
     notifications: 'Event reminders',
     signOut: 'Sign out',
     language: 'Language',
+    languageDetail: 'Per-section language',
   },
   offline: {
     label: 'Offline',
@@ -755,6 +756,22 @@ export const en: DeepStringify<typeof zh> = {
   password: {
     showAria: 'Show password',
     hideAria: 'Hide password',
+  },
+  localeSettings: {
+    title: 'Per-section language',
+    intro: 'Main language sets the overall language. Each section below can override independently — e.g. keep event type chips in English (compact DDL/Exam) while everything else is Chinese.',
+    mainLocale: 'Main language',
+    sectionTypes: 'Event types',
+    sectionTypesHint: 'Event chips / filters / Moodle badges: DDL · Exam · Personal …',
+    sectionNav: 'Navigation & page titles',
+    sectionNavHint: 'Bottom nav / page titles: Home · Calendar · To-do …',
+    sectionActions: 'Buttons & actions',
+    sectionActionsHint: 'Save · Cancel · Delete · Done …',
+    optionAuto: 'Follow main',
+    optionZh: '中文',
+    optionEn: 'English',
+    reset: 'Reset all to default',
+    close: 'Done',
   },
   notif: {
     defaultTitle: 'Event reminder',
