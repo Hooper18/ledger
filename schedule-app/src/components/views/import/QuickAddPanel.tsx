@@ -12,6 +12,7 @@ import type { Course, EventType, Semester } from '../../../lib/types'
 import { typeLabel } from '../../../lib/utils'
 import { formatUSD, LOW_BALANCE_THRESHOLD_USD } from '../../../lib/balance'
 import TopupModal from '../../TopupModal'
+import { useT } from '../../../i18n'
 
 const EVENT_TYPES: EventType[] = [
   'deadline',
@@ -38,6 +39,7 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
   const { user } = useAuth()
   const { parseEvents, loading, error } = useClaude()
   const { balance, reload: reloadBalance } = useBalance()
+  const t = useT()
   const [input, setInput] = useState('')
   const [candidates, setCandidates] = useState<ParsedEvent[]>([])
   const [saving, setSaving] = useState(false)
@@ -55,19 +57,13 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
       const events = await parseEvents(input, courses, semester)
       setCandidates(events)
       if (events.length === 0) {
-        setSaveErr('没有解析出事件，换个说法试试？')
+        setSaveErr(t('import.quick.noResult'))
       }
     } catch (e) {
-      // Hook already stashes a generic error; overwrite it when the server
-      // told us the balance was the problem so the user gets an actionable
-      // message + topup affordance.
       if (e instanceof ClaudeProxyError && e.stage === 'insufficient_balance') {
-        setSaveErr('余额不足，请先充值或兑换邀请码后再试')
+        setSaveErr(t('import.insufficientBalance'))
       }
-      // Other errors: hook.error surface handles it.
     } finally {
-      // claude-proxy deducts on start and refunds on failure / empty result;
-      // balance may have moved either way, so always pull fresh.
       reloadBalance()
     }
   }
@@ -104,17 +100,16 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
       setSaveErr(error.message)
       return
     }
-    setOkMsg(`已保存 ${rows.length} 条事件。`)
+    setOkMsg(t('import.quick.savedOk', { n: rows.length }))
     setCandidates([])
     setInput('')
     onSaved()
   }
 
+  const balanceText = balance === null ? '…' : formatUSD(balance)
+
   return (
     <section className="space-y-3">
-      {/* Balance banner — mirrors the other import panels. AI 解析 triggers
-          a server-side deduction, so the user needs to see their balance
-          before firing off a parse. */}
       <div
         className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
           lowBalance
@@ -124,16 +119,16 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
       >
         <Wallet size={14} className="shrink-0" />
         <span className="flex-1">
-          余额 {balance === null ? '…' : formatUSD(balance)}
+          {t('import.balanceText', { balance: balanceText })}
           <span className="ml-1 text-[10px] text-muted">USD</span>
-          {lowBalance && '（余额不足，AI 解析将失败）'}
+          {lowBalance && t('import.balanceLowSuffix')}
         </span>
         <button
           type="button"
           onClick={() => setTopupOpen(true)}
           className="text-[11px] px-2 py-0.5 rounded bg-accent text-white font-medium"
         >
-          充值
+          {t('import.balanceTopup')}
         </button>
       </div>
 
@@ -142,7 +137,7 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="用自然语言描述：CS101 quiz 下周五 3pm 10%"
+          placeholder={t('import.quick.placeholder')}
           className="flex-1 bg-transparent text-sm text-text placeholder:text-muted focus:outline-none"
           disabled={loading}
         />
@@ -151,7 +146,7 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
           disabled={loading || !input.trim()}
           className="px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium disabled:opacity-40"
         >
-          {loading ? '解析中…' : '解析'}
+          {loading ? t('import.parsing') : t('import.parse')}
         </button>
       </form>
 
@@ -163,7 +158,7 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold tracking-wider text-muted uppercase">
-              待确认 · {candidates.length}
+              {t('import.pendingHeadingEvents', { n: candidates.length })}
             </h3>
             <div className="flex items-center gap-2">
               <button
@@ -171,7 +166,7 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
                 onClick={() => setCandidates([])}
                 className="px-2 py-1 rounded-lg text-xs text-dim hover:bg-hover flex items-center gap-1"
               >
-                <X size={12} /> 全部丢弃
+                <X size={12} /> {t('import.discardAll')}
               </button>
               <button
                 type="button"
@@ -179,7 +174,7 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
                 disabled={saving}
                 className="px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium disabled:opacity-60 flex items-center gap-1"
               >
-                <Check size={12} /> {saving ? '保存中…' : '保存全部'}
+                <Check size={12} /> {saving ? t('import.saving') : t('import.saveAll')}
               </button>
             </div>
           </div>
@@ -211,6 +206,7 @@ interface CardProps {
 }
 
 function CandidateCard({ value, courses, onChange, onRemove }: CardProps) {
+  const t = useT()
   return (
     <div className="p-3 rounded-xl bg-card border border-border space-y-2">
       <div className="flex items-start gap-2">
@@ -223,7 +219,7 @@ function CandidateCard({ value, courses, onChange, onRemove }: CardProps) {
           type="button"
           onClick={onRemove}
           className="p-1 rounded hover:bg-hover text-muted hover:text-red-500"
-          aria-label="移除"
+          aria-label={t('import.deleteSession')}
         >
           <Trash2 size={14} />
         </button>
@@ -235,7 +231,7 @@ function CandidateCard({ value, courses, onChange, onRemove }: CardProps) {
           onChange={(e) => onChange({ course_id: e.target.value || null })}
           className={selectCls}
         >
-          <option value="">（无课程）</option>
+          <option value="">{t('import.candidateNoCourse')}</option>
           {courses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.code} {c.name}
@@ -248,9 +244,9 @@ function CandidateCard({ value, courses, onChange, onRemove }: CardProps) {
           onChange={(e) => onChange({ type: e.target.value as EventType })}
           className={selectCls}
         >
-          {EVENT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {typeLabel(t)}
+          {EVENT_TYPES.map((tp) => (
+            <option key={tp} value={tp}>
+              {typeLabel(tp)}
             </option>
           ))}
         </select>
@@ -270,7 +266,7 @@ function CandidateCard({ value, courses, onChange, onRemove }: CardProps) {
         <input
           value={value.weight ?? ''}
           onChange={(e) => onChange({ weight: e.target.value || null })}
-          placeholder="权重"
+          placeholder={t('import.candidateWeightPlaceholder')}
           className={inputCls}
         />
         <label className="flex items-center gap-1.5 px-2 text-dim">
@@ -280,7 +276,7 @@ function CandidateCard({ value, courses, onChange, onRemove }: CardProps) {
             onChange={(e) => onChange({ is_group: e.target.checked })}
             className="accent-accent"
           />
-          Group
+          {t('import.candidateGroupLabel')}
         </label>
       </div>
 

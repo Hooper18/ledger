@@ -29,9 +29,9 @@ import {
   LOW_BALANCE_THRESHOLD_USD,
 } from '../../../lib/balance'
 import type { FileKind } from '../../../lib/fileParsers'
+import { useT } from '../../../i18n'
+import type { TFn } from '../../../i18n'
 
-// Lazy-load fileParsers — same trick as FileImportPanel to keep the ~1MB
-// pdfjs/mammoth/jszip bundle out of the main chunk.
 async function loadParsers() {
   return import('../../../lib/fileParsers')
 }
@@ -46,8 +46,6 @@ export interface MoodleEvent {
   is_group?: boolean
   date_inferred?: boolean
   date_source?: string | null
-  // Layer 2 marker — Claude-produced events carry this flag so the UI can
-  // tint them and doImport can pick the right `source` column value.
   is_layer2?: boolean
 }
 
@@ -79,7 +77,6 @@ export interface MoodleCourse {
   course_url?: string
   events: MoodleEvent[]
   files: MoodleFile[]
-  // Layer 2 optional fields. Absent in legacy (Layer 1-only) payloads.
   page_content?: MoodlePageContent
   downloaded_files?: MoodleDownloadedFile[]
 }
@@ -122,9 +119,6 @@ interface Pending {
   dedupCount: number
 }
 
-// Reconstruct a File from the base64 payload that content.js wrote to
-// chrome.storage. Used to drive extractText (which wants a File to sniff
-// kind and arrayBuffer).
 function base64ToFile(base64: string, name: string, mime: string): File {
   const binary = atob(base64)
   const bytes = new Uint8Array(binary.length)
@@ -132,16 +126,10 @@ function base64ToFile(base64: string, name: string, mime: string): File {
   return new File([bytes], name, { type: mime })
 }
 
-// One-shot retry with a delay. Anthropic's rate limit (50K tokens/min) can
-// knock out a single parse even with serial dispatch when a course's files
-// are large — giving the bucket 10s to refill usually clears the 429.
 async function withRetry<T>(fn: () => Promise<T>, delayMs: number): Promise<T> {
   try {
     return await fn()
   } catch (e) {
-    // Don't retry when the server already told us the balance is empty —
-    // waiting 10s won't magically top it up, and a retry would just eat
-    // another Claude proxy round-trip before failing the same way.
     if (e instanceof ClaudeProxyError && e.stage === 'insufficient_balance') {
       throw e
     }
@@ -156,20 +144,15 @@ async function withRetry<T>(fn: () => Promise<T>, delayMs: number): Promise<T> {
   }
 }
 
-// Collapses obvious spelling/casing variants so the dedup keys line up.
-// Deliberately narrow — "Quiz 1" and "Quiz 2" must stay distinct, and
-// "Quizzes (×3)" must not collapse into "Quiz 1".
 function normalizeTitle(raw: string): string {
-  let t = (raw || '').toLowerCase().trim()
-  t = t.replace(/final examination\b/g, 'final exam')
-  t = t.replace(/mid-term\b/g, 'midterm')
-  t = t.replace(/^the\s+/, '').replace(/\s+the$/, '')
-  t = t.replace(/\s+/g, ' ')
-  return t
+  let tx = (raw || '').toLowerCase().trim()
+  tx = tx.replace(/final examination\b/g, 'final exam')
+  tx = tx.replace(/mid-term\b/g, 'midterm')
+  tx = tx.replace(/^the\s+/, '').replace(/\s+the$/, '')
+  tx = tx.replace(/\s+/g, ' ')
+  return tx
 }
 
-// Per-event score used to pick the representative when duplicates are found.
-// Priority: has date > has weight > Layer 2 (AI, usually richer notes/type).
 function dedupScore(e: MoodleEvent): number {
   let s = 0
   if (e.date) s += 100
@@ -178,11 +161,6 @@ function dedupScore(e: MoodleEvent): number {
   return s
 }
 
-// Within a single course, merges events whose normalized titles collide.
-// Keeps the highest-scoring variant and appends any non-overlapping notes
-// from the discarded siblings. The ordering of the output matches the
-// first-seen position of each unique normalized title so stable ci:ei
-// selection keys don't drift wildly when Layer 2 results arrive.
 function deduplicateEvents(events: MoodleEvent[]): MoodleEvent[] {
   const groups = new Map<string, MoodleEvent[]>()
   const order: string[] = []
@@ -233,31 +211,28 @@ function typeBadgeClass(type: EventType): string {
   }
 }
 
-function typeBadgeLabel(type: EventType): string {
+function typeBadgeLabel(type: EventType, t: TFn): string {
   switch (type) {
     case 'deadline':
-      return 'DDL'
+      return t('import.moodle.typeDdl')
     case 'quiz':
-      return 'Quiz'
+      return t('import.moodle.typeQuiz')
     case 'exam':
-      return 'Exam'
+      return t('import.moodle.typeExam')
     case 'midterm':
-      return 'Midterm'
+      return t('import.moodle.typeMidterm')
     case 'lab_report':
-      return 'Lab'
+      return t('import.moodle.typeLab')
     case 'presentation':
-      return 'Pres.'
+      return t('import.moodle.typePresentation')
     case 'video_submission':
-      return 'Video'
+      return t('import.moodle.typeVideo')
     default:
       return type
   }
 }
 
 const MOODLE_SOURCE: EventSource = 'moodle_scan'
-// Layer 2 writes file-import sources too, so conflict detection and
-// replace-scope need to cover all of them. FileImportPanel events end up in
-// this bucket too — the policy is "re-import wipes the autoimport family".
 const MOODLE_IMPORT_SOURCES: EventSource[] = [
   'moodle_scan',
   'ppt_import',
@@ -285,6 +260,7 @@ export default function MoodleImportPanel({
   const { parseFileText, parseImage } = useClaude()
   const { entries: calendar } = useCalendar(semester.id)
   const { balance, reload: reloadBalance } = useBalance()
+  const t = useT()
   const [topupOpen, setTopupOpen] = useState(false)
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [filesOpen, setFilesOpen] = useState<Record<number, boolean>>({})
@@ -292,33 +268,18 @@ export default function MoodleImportPanel({
   const [err, setErr] = useState<string | null>(null)
   const [okMsg, setOkMsg] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending | null>(null)
-  // overrideCodes[ci] === undefined → use Moodle-extracted code (auto-match);
-  // overrideCodes[ci] === ''        → user explicitly picked "不匹配任何课程"
-  //                                    from the dropdown (force course_id=null);
-  // overrideCodes[ci] === 'COM104'  → user picked that course from the dropdown.
   const [overrideCodes, setOverrideCodes] = useState<Record<number, string>>({})
   const [editingIdx, setEditingIdx] = useState<number | null>(null)
-  // Per-course AI parse state keyed by course index.
   const [aiState, setAIState] = useState<Record<number, AICourseState>>({})
-  // Overall queue progress (serial runner). null when idle.
   const [queueProgress, setQueueProgress] = useState<{
     current: number
     total: number
     label: string
   } | null>(null)
-  // Keyed by the sequence of eligible course indices for the current payload.
-  // Prevents StrictMode's double-mount (and effect-deps changes) from kicking
-  // off the queue twice.
   const queueStartedRef = useRef<string | null>(null)
 
   const runAIParse = useCallback(
     async (ci: number, mc: MoodleCourse) => {
-      // Display-only estimate for the insufficient-balance toast. Computed
-      // AFTER text extraction below — raw PPTX/PDF file sizes are 50–200×
-      // bigger than the extracted text the API actually sees, so estimating
-      // from binary file bytes used to produce wildly inflated $30+ figures
-      // for normal-sized courses. Actual deduction is computed server-side
-      // in claude-proxy from the real request body.
       let estUsd = 0
 
       setAIState((prev) => ({
@@ -333,7 +294,6 @@ export default function MoodleImportPanel({
       try {
         const parsers = await loadParsers()
 
-        // Extract text from downloaded files.
         let combinedText = ''
         let primaryKind: FileKind | null = null
         const downloaded = mc.downloaded_files ?? []
@@ -365,8 +325,6 @@ export default function MoodleImportPanel({
         const images = mc.page_content?.images ?? []
         const hasImage = images.length > 0
 
-        // Derive source + source_file label before the API call so that
-        // they're available in the final state regardless of outcome.
         let source: EventSource
         if (hasImage) {
           source = 'photo_import'
@@ -384,8 +342,6 @@ export default function MoodleImportPanel({
 
         const trimmed = combinedText.trim()
         if (!trimmed && !hasImage) {
-          // Nothing to send — skip both the AI call and any charge. No
-          // refund bookkeeping needed because we never called claude-proxy.
           setAIState((prev) => ({
             ...prev,
             [ci]: {
@@ -398,9 +354,6 @@ export default function MoodleImportPanel({
           return
         }
 
-        // Now we know what's actually going to the API — text size after
-        // extraction + the first image (claude-proxy file_import takes at
-        // most one). Mirrors the server-side cost calc in claude-proxy.
         const textBytes = new TextEncoder().encode(trimmed).length
         const imageBytes = hasImage
           ? Math.floor((images[0].data.length * 3) / 4)
@@ -412,11 +365,6 @@ export default function MoodleImportPanel({
           ).toFixed(2),
         )
 
-        // Single API call per course (with one 10s-delayed retry on any
-        // error — usually a 429 from the 50K tokens/min bucket). Claude-
-        // proxy's file_import takes at most one image — if the page has
-        // multiple images we pass only the first (rest gets text-only
-        // treatment).
         let events
         if (hasImage) {
           events = await withRetry(
@@ -468,9 +416,6 @@ export default function MoodleImportPanel({
           },
         }))
       } catch (e) {
-        // claude-proxy handles refunds server-side: if Claude errors or
-        // returns empty, the server already called refund_balance before
-        // responding. We only need to classify the error for the UI.
         if (e instanceof ClaudeProxyError && e.stage === 'insufficient_balance') {
           setAIState((prev) => ({
             ...prev,
@@ -479,7 +424,7 @@ export default function MoodleImportPanel({
               newEvents: [],
               source: 'moodle_scan',
               sourceFile: 'moodle_scan',
-              error: `需要 ${formatUSD(estUsd)}，余额不足`,
+              error: t('import.needCharge', { amount: formatUSD(estUsd) }),
             },
           }))
         } else {
@@ -496,16 +441,12 @@ export default function MoodleImportPanel({
           }))
         }
       } finally {
-        // Server-side deduction/refund may have changed the balance — pull
-        // a fresh value regardless of outcome so the banner stays accurate.
         reloadBalance()
       }
     },
-    [calendar, courses, parseFileText, parseImage, semester, reloadBalance],
+    [calendar, courses, parseFileText, parseImage, semester, reloadBalance, t],
   )
 
-  // Auto-select all events when a new payload arrives; also drop any overrides
-  // from a previous scan since course indices may no longer line up.
   useEffect(() => {
     if (!moodleData) return
     const next: Record<string, boolean> = {}
@@ -525,10 +466,6 @@ export default function MoodleImportPanel({
     queueStartedRef.current = null
   }, [moodleData])
 
-  // Serial queue runner. Anthropic's 50K tokens/min bucket gets blown
-  // immediately if we fire all courses in parallel, so we process them one
-  // at a time with a 3s cooldown between courses. Per-course retry on error
-  // is handled inside runAIParse via withRetry.
   const runAIQueue = useCallback(
     async (eligible: Array<{ ci: number; mc: MoodleCourse }>) => {
       for (let i = 0; i < eligible.length; i++) {
@@ -536,7 +473,7 @@ export default function MoodleImportPanel({
         setQueueProgress({
           current: i + 1,
           total: eligible.length,
-          label: mc.course_code ?? mc.course_name ?? '未命名',
+          label: mc.course_code ?? mc.course_name ?? t('import.moodle.unnamedCourse'),
         })
         await runAIParse(ci, mc)
         if (i < eligible.length - 1) {
@@ -545,15 +482,9 @@ export default function MoodleImportPanel({
       }
       setQueueProgress(null)
     },
-    [runAIParse],
+    [runAIParse, t],
   )
 
-  // Kick off the queue for courses carrying Layer 2 data. Runs once per
-  // moodleData arrival — queueStartedRef's string key guards against
-  // StrictMode double-fire and effect-deps churn. Skip when there are no
-  // registered courses: the component shows a "请先导入课程表" screen and
-  // we'd otherwise burn Claude quota on events that all land as
-  // course_id=null.
   useEffect(() => {
     if (!moodleData || courses.length === 0) return
     const eligible = moodleData.flatMap((mc, ci) => {
@@ -604,10 +535,6 @@ export default function MoodleImportPanel({
     setEditingIdx(null)
   }
 
-  // enrichedCourses = original Layer 1 events + Layer 2 events from AI parse,
-  // with per-course dedup so the same real assessment doesn't show up twice
-  // (DOM-scraped Layer 1 stub + AI-derived Layer 2 row with full details).
-  // Rendering, selection keys, totals, and doImport all iterate over these.
   const enrichedCourses = useMemo(() => {
     if (!moodleData) return null
     return moodleData.map((mc, ci) => {
@@ -621,9 +548,6 @@ export default function MoodleImportPanel({
     })
   }, [moodleData, aiState])
 
-  // Auto-select newly arrived Layer 2 events (treat absent key as "wants
-  // selecting" the first time it's seen). Existing user deselections are
-  // preserved because we only touch keys whose value is undefined.
   useEffect(() => {
     if (!enrichedCourses) return
     setSelected((prev) => {
@@ -697,9 +621,6 @@ export default function MoodleImportPanel({
       const s = aiState[ci]
       mc.events.forEach((me, ei) => {
         if (!selected[`${ci}:${ei}`]) return
-        // Layer 1 events → moodle_scan; Layer 2 events → source derived
-        // from what got sent to Claude (file kind or moodle_scan for
-        // page-content-only).
         const source: EventSource =
           me.is_layer2 && s ? s.source : MOODLE_SOURCE
         const sourceFile =
@@ -725,13 +646,10 @@ export default function MoodleImportPanel({
     })
 
     if (rawRows.length === 0) {
-      setErr('请至少勾选一条事件')
+      setErr(t('import.moodle.selectAtLeastOne'))
       return
     }
 
-    // Dedup within this batch on (course_id, title, date) — same key the DB
-    // unique index uses. Without this, an unmatched (course_id=null) + same
-    // title + same date row triggers a DB-level unique violation.
     const seen = new Set<string>()
     const rows: EventRow[] = []
     for (const r of rawRows) {
@@ -755,7 +673,7 @@ export default function MoodleImportPanel({
         .in('course_id', affectedCourseIds)
         .in('source', MOODLE_IMPORT_SOURCES)
       if (qErr) {
-        setErr(`查已有自动导入事件失败：${qErr.message}`)
+        setErr(t('import.moodle.lookupErr', { msg: qErr.message }))
         return
       }
       const counts = new Map<string, number>()
@@ -801,7 +719,7 @@ export default function MoodleImportPanel({
         .in('course_id', replaceCourseIds)
         .in('source', MOODLE_IMPORT_SOURCES)
       if (delErr) {
-        setErr(`清理旧自动导入失败：${delErr.message}`)
+        setErr(t('import.moodle.cleanErr', { msg: delErr.message }))
         setSaving(false)
         return
       }
@@ -818,11 +736,12 @@ export default function MoodleImportPanel({
       return
     }
 
-    const dupNote = dedupCount > 0 ? `（批内去重 ${dedupCount} 条）` : ''
+    const dupNote =
+      dedupCount > 0 ? t('import.moodle.saveDupNote', { n: dedupCount }) : ''
     setOkMsg(
       strategy === 'replace'
-        ? `已导入 ${rows.length} 条事件${dupNote}，替换掉 ${deleted} 条旧自动导入。`
-        : `已导入 ${rows.length} 条事件${dupNote}。`,
+        ? t('import.moodle.saveReplaceOk', { n: rows.length, deleted, dup: dupNote })
+        : t('import.moodle.saveAppendOk', { n: rows.length, dup: dupNote }),
     )
     setSaving(false)
     onSaved()
@@ -831,31 +750,21 @@ export default function MoodleImportPanel({
 
   // Empty / waiting states ----------------------------------------------------
 
-  // Hard prerequisite: we match Moodle assignments/quizzes to courses by code.
-  // Without any course rows in this semester, every event would land as
-  // course_id=null — better to block and point the user at the right import.
   if (courses.length === 0) {
     return (
       <section className="p-4 rounded-xl bg-card border border-amber-500/40 text-sm text-dim space-y-2">
         <div className="font-medium text-text">
-          ⚠️ 请先导入课程表，再使用 Moodle 导入
+          {t('import.moodle.needCoursesTitle')}
         </div>
-        <div>
-          Moodle 导入需要按 course code 关联到已有课程。本学期还没有任何课程
-          记录，所有 assignment / quiz 都会变成 course_id=null 的孤立事件。
-        </div>
-        <div>
-          请先通过 <strong>AC Online 插件</strong>{' '}
-          从 XMUM AC Online 一键导入课程表，或在"<strong>课程表</strong>" tab
-          手动粘贴。
-        </div>
+        <div>{t('import.moodle.needCoursesBody')}</div>
+        <div>{t('import.moodle.needCoursesHint')}</div>
         {onGoToCoursesTab && (
           <button
             type="button"
             onClick={onGoToCoursesTab}
             className="mt-1 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium"
           >
-            前往 课程表 tab
+            {t('import.moodle.goToCourses')}
           </button>
         )}
       </section>
@@ -865,17 +774,9 @@ export default function MoodleImportPanel({
   if (moodleData === null) {
     return (
       <section className="p-4 rounded-xl bg-card border border-border text-sm text-dim space-y-2">
-        <div className="font-medium text-text">等待 Moodle 插件数据…</div>
-        <div>
-          请在{' '}
-          <code className="px-1 py-0.5 rounded bg-hover text-text">
-            l.xmu.edu.my
-          </code>{' '}
-          的 Dashboard 或课程页面点击右下角绿色"📋 导入 DDL"按钮。
-        </div>
-        <div className="text-xs">
-          若已点击但数据未到，刷新此页面并重新触发插件即可。
-        </div>
+        <div className="font-medium text-text">{t('import.moodle.waitingTitle')}</div>
+        <div>{t('import.moodle.waitingBody', { host: 'l.xmu.edu.my' })}</div>
+        <div className="text-xs">{t('import.moodle.waitingHint')}</div>
       </section>
     )
   }
@@ -883,12 +784,13 @@ export default function MoodleImportPanel({
   if (moodleData.length === 0) {
     return (
       <section className="p-4 rounded-xl bg-card border border-border text-sm text-dim">
-        Moodle 插件返回 0 条课程。请确认所在页面含已选课程。
+        {t('import.moodle.noCourses')}
       </section>
     )
   }
 
   const lowBalance = balance !== null && balance < LOW_BALANCE_THRESHOLD_USD
+  const balanceText = balance === null ? '…' : formatUSD(balance)
 
   return (
     <section className="space-y-3">
@@ -901,15 +803,15 @@ export default function MoodleImportPanel({
       >
         <Wallet size={14} className="shrink-0" />
         <span className="flex-1">
-          余额 {balance === null ? '…' : formatUSD(balance)}
-          {lowBalance && '（余额不足，AI 解析将跳过）'}
+          {t('import.balanceText', { balance: balanceText })}
+          {lowBalance && t('import.balanceLowSuffixSkip')}
         </span>
         <button
           type="button"
           onClick={() => setTopupOpen(true)}
           className="text-[11px] px-2 py-0.5 rounded bg-accent text-white font-medium"
         >
-          充值
+          {t('import.balanceTopup')}
         </button>
       </div>
 
@@ -917,21 +819,31 @@ export default function MoodleImportPanel({
         <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-600 text-xs">
           <Loader2 size={14} className="animate-spin shrink-0" />
           <span className="truncate">
-            正在解析 {queueProgress.current}/{queueProgress.total}: {queueProgress.label}…
+            {t('import.moodle.queueProgress', {
+              current: queueProgress.current,
+              total: queueProgress.total,
+              label: queueProgress.label,
+            })}
           </span>
         </div>
       )}
 
       <div className="flex items-center justify-between">
         <div className="text-xs text-dim">
-          扫描到 {moodleData.length} 门课程 · 勾选 {totals.checked}/{totals.total} 条事件
+          {t('import.moodle.summary', {
+            courses: moodleData.length,
+            checked: totals.checked,
+            total: totals.total,
+          })}
         </div>
         <button
           type="button"
           onClick={toggleAll}
           className="text-xs text-dim hover:text-text px-2 py-1 rounded hover:bg-hover"
         >
-          {totals.checked < totals.total ? '全选' : '取消全选'}
+          {totals.checked < totals.total
+            ? t('import.moodle.selectAll')
+            : t('import.moodle.clearSelection')}
         </button>
       </div>
 
@@ -957,13 +869,13 @@ export default function MoodleImportPanel({
                       <CheckCircle2
                         size={14}
                         className="text-emerald-500 shrink-0"
-                        aria-label="课程已匹配"
+                        aria-label={t('import.moodle.matchedAria')}
                       />
                     ) : (
                       <AlertTriangle
                         size={14}
                         className="text-amber-500 shrink-0"
-                        aria-label="课程未匹配"
+                        aria-label={t('import.moodle.unmatchedAria')}
                       />
                     )}
                     {isEditing ? (
@@ -979,7 +891,7 @@ export default function MoodleImportPanel({
                         }}
                         className="max-w-[14rem] px-1.5 py-0.5 text-[11px] font-bold rounded bg-main border border-accent text-text focus:outline-none"
                       >
-                        <option value="">不匹配任何课程</option>
+                        <option value="">{t('import.moodle.noMatchOption')}</option>
                         {courses.map((c) => (
                           <option key={c.id} value={c.code}>
                             {c.code} - {c.name}
@@ -994,22 +906,22 @@ export default function MoodleImportPanel({
                           setEditingIdx(ci)
                         }}
                         className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded bg-hover text-dim hover:text-text"
-                        aria-label="编辑课程代码"
+                        aria-label={t('import.moodle.editCodeAria')}
                       >
-                        {effectiveCode || '未识别'}
+                        {effectiveCode || t('import.moodle.unmatchedCode')}
                         <Pencil size={9} />
                       </button>
                     )}
                     <span className="text-sm font-medium text-text truncate min-w-0">
-                      {mc.course_name || '未命名课程'}
+                      {mc.course_name || t('import.moodle.unnamedCourse')}
                     </span>
                   </div>
                   <div className="mt-0.5 text-[11px] text-dim">
                     {matched
-                      ? `→ ${matched.code} ${matched.name}`
+                      ? t('import.moodle.matchedTo', { code: matched.code, name: matched.name })
                       : effectiveCode
-                        ? `未匹配到课程代码 ${effectiveCode}，点击代码重新选择`
-                        : '未关联任何课程，点击代码可选择'}
+                        ? t('import.moodle.unmatchedKnownCode', { code: effectiveCode })
+                        : t('import.moodle.unmatchedNoCode')}
                   </div>
                 </div>
                 {mc.events.length > 0 && (
@@ -1018,7 +930,9 @@ export default function MoodleImportPanel({
                     onClick={() => toggleCourse(ci)}
                     className="text-[11px] text-dim hover:text-text px-2 py-1 rounded hover:bg-hover shrink-0"
                   >
-                    {courseAllChecked ? '取消' : '全选'}
+                    {courseAllChecked
+                      ? t('import.moodle.courseToggleNone')
+                      : t('import.moodle.courseToggleAll')}
                   </button>
                 )}
               </header>
@@ -1038,14 +952,14 @@ export default function MoodleImportPanel({
                   {ai.status === 'running' && (
                     <>
                       <Loader2 size={12} className="animate-spin shrink-0" />
-                      <span>正在 AI 解析课件…</span>
+                      <span>{t('import.moodle.aiRunning')}</span>
                     </>
                   )}
                   {ai.status === 'success' && (
                     <>
                       <Sparkles size={12} className="shrink-0" />
                       <span>
-                        解析完成，发现 {ai.newEvents.length} 个新事件
+                        {t('import.moodle.aiSuccess', { n: ai.newEvents.length })}
                       </span>
                     </>
                   )}
@@ -1053,21 +967,21 @@ export default function MoodleImportPanel({
                     <>
                       <Wallet size={12} className="shrink-0" />
                       <span className="flex-1 truncate">
-                        {ai.error || '余额不足，未解析'}
+                        {ai.error || t('import.moodle.aiInsufficient')}
                       </span>
                       <button
                         type="button"
                         onClick={() => setTopupOpen(true)}
                         className="inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded hover:bg-amber-500/20 shrink-0"
                       >
-                        充值
+                        {t('import.balanceTopup')}
                       </button>
                       <button
                         type="button"
                         onClick={() => runAIParse(ci, originalMc)}
                         className="inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded hover:bg-amber-500/20 shrink-0"
                       >
-                        <RotateCcw size={10} /> 重试
+                        <RotateCcw size={10} /> {t('import.moodle.retry')}
                       </button>
                     </>
                   )}
@@ -1075,14 +989,14 @@ export default function MoodleImportPanel({
                     <>
                       <AlertTriangle size={12} className="shrink-0" />
                       <span className="flex-1 truncate">
-                        解析失败：{ai.error || '未知错误'}
+                        {t('import.moodle.aiError', { msg: ai.error || '?' })}
                       </span>
                       <button
                         type="button"
                         onClick={() => runAIParse(ci, originalMc)}
                         className="inline-flex items-center gap-0.5 text-[11px] px-1.5 py-0.5 rounded hover:bg-red-500/20 shrink-0"
                       >
-                        <RotateCcw size={10} /> 重试
+                        <RotateCcw size={10} /> {t('import.moodle.retry')}
                       </button>
                     </>
                   )}
@@ -1091,7 +1005,7 @@ export default function MoodleImportPanel({
 
               {mc.events.length === 0 ? (
                 <div className="p-3 text-xs text-dim">
-                  未发现未来的 assignment / quiz deadline
+                  {t('import.moodle.noFutureEvents')}
                 </div>
               ) : (
                 <ul className="divide-y divide-border">
@@ -1112,7 +1026,11 @@ export default function MoodleImportPanel({
                             e.stopPropagation()
                             toggleOne(key)
                           }}
-                          aria-label={checked ? '取消勾选' : '勾选'}
+                          aria-label={
+                            checked
+                              ? t('import.moodle.uncheckOne')
+                              : t('import.moodle.checkOne')
+                          }
                           className={`mt-0.5 w-5 h-5 shrink-0 rounded border-2 flex items-center justify-center transition-colors ${
                             checked
                               ? 'bg-accent border-accent text-white'
@@ -1126,7 +1044,7 @@ export default function MoodleImportPanel({
                             <span
                               className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${typeBadgeClass(me.type)}`}
                             >
-                              {typeBadgeLabel(me.type)}
+                              {typeBadgeLabel(me.type, t)}
                             </span>
                             {me.is_layer2 && (
                               <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-sky-500/20 text-sky-600 inline-flex items-center gap-0.5">
@@ -1139,11 +1057,11 @@ export default function MoodleImportPanel({
                               >
                                 {me.date}
                                 {me.time ? ` ${me.time}` : ''}
-                                {me.date_inferred ? ' (推断)' : ''}
+                                {me.date_inferred && t('import.moodle.inferred')}
                               </span>
                             ) : (
                               <span className="inline-flex items-center gap-0.5 text-[11px] text-emerald-500 font-medium">
-                                <Triangle size={10} /> 待定
+                                <Triangle size={10} /> {t('import.moodle.undated')}
                               </span>
                             )}
                             {me.weight && (
@@ -1186,10 +1104,10 @@ export default function MoodleImportPanel({
                         <ChevronRight size={12} />
                       )}
                       <Paperclip size={12} />
-                      发现 {mc.files.length} 个课件文件
+                      {t('import.moodle.filesFound', { n: mc.files.length })}
                     </span>
                     <span className="text-[10px] text-muted italic">
-                      文件导入将在后续版本支持
+                      {t('import.moodle.filesFutureNotice')}
                     </span>
                   </button>
                   {filesExpanded && (
@@ -1231,11 +1149,11 @@ export default function MoodleImportPanel({
         >
           {saving ? (
             <>
-              <Loader2 size={14} className="animate-spin" /> 保存中…
+              <Loader2 size={14} className="animate-spin" /> {t('import.saving')}
             </>
           ) : (
             <>
-              <Check size={14} /> 导入选中的 {totals.checked} 条事件
+              <Check size={14} /> {t('import.moodle.importBtn', { n: totals.checked })}
             </>
           )}
         </button>
@@ -1276,10 +1194,11 @@ function ConflictModal({
   onAppend,
   onReplace,
 }: ConflictModalProps) {
+  const t = useT()
   return (
     <Modal
       open={!!pending}
-      title="课程已有 Moodle 导入事件"
+      title={t('import.moodle.conflictTitle')}
       onClose={onCancel}
       footer={
         <div className="flex gap-2">
@@ -1288,30 +1207,28 @@ function ConflictModal({
             onClick={onCancel}
             className="px-3 py-2.5 rounded-lg bg-card border border-border text-dim text-sm"
           >
-            取消
+            {t('conflict.cancel')}
           </button>
           <button
             type="button"
             onClick={onAppend}
             className="px-3 py-2.5 rounded-lg bg-card border border-border text-text text-sm font-medium"
           >
-            追加
+            {t('conflict.append')}
           </button>
           <button
             type="button"
             onClick={onReplace}
             className="flex-1 py-2.5 rounded-lg bg-red-500 text-white text-sm font-medium"
           >
-            替换
+            {t('conflict.replace')}
           </button>
         </div>
       }
     >
       {pending && (
         <div className="space-y-3 text-sm">
-          <div className="text-text">
-            检测到以下课程已有自动导入的事件：
-          </div>
+          <div className="text-text">{t('import.moodle.conflictBody')}</div>
           <ul className="rounded-lg bg-card border border-border divide-y divide-border">
             {pending.conflicts.map((c) => (
               <li
@@ -1320,22 +1237,23 @@ function ConflictModal({
               >
                 <span className="text-text truncate">{c.courseLabel}</span>
                 <span className="text-xs text-amber-600 shrink-0">
-                  已有 {c.existingCount} 条
+                  {t('import.moodle.conflictExisting', { n: c.existingCount })}
                 </span>
               </li>
             ))}
           </ul>
           <div className="text-xs text-dim leading-relaxed space-y-1">
             <div>
-              <span className="text-red-500 font-medium">替换</span>
-              ：删掉这些课程下所有{' '}
-              <code>moodle_scan / ppt_import / pdf_import / docx_import /
-              photo_import</code>{' '}
-              来源的旧事件，然后插入本次新事件。手动 / 快速添加的事件不受影响。
+              <span className="text-red-500 font-medium">
+                {t('import.moodle.conflictReplaceTag')}
+              </span>
+              {t('import.moodle.conflictReplaceDesc')}
             </div>
             <div>
-              <span className="text-text font-medium">追加</span>
-              ：保留旧事件，按 (课程 + 标题 + 日期) 去重合并；同键会被新值覆盖。
+              <span className="text-text font-medium">
+                {t('import.moodle.conflictAppendTag')}
+              </span>
+              {t('import.moodle.conflictAppendDesc')}
             </div>
           </div>
         </div>

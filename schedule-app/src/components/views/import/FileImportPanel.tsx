@@ -36,6 +36,8 @@ import {
 } from '../../../lib/balance'
 import Modal from '../../shared/Modal'
 import TopupModal from '../../TopupModal'
+import { useT } from '../../../i18n'
+import type { TFn } from '../../../i18n'
 
 const IMPORT_SOURCES: EventSource[] = [
   'ppt_import',
@@ -76,8 +78,6 @@ interface PendingSave {
   kind: ImportKind
 }
 
-// Lazy-load the parsers — they pull in pdfjs-dist + mammoth + jszip (~1MB
-// combined) which shouldn't hit the main bundle until the user uploads.
 async function loadParsers() {
   return import('../../../lib/fileParsers')
 }
@@ -130,6 +130,7 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
   const { parseFileText, parseImage, loading, error } = useClaude()
   const { entries: calendar } = useCalendar(semester.id)
   const { balance, reload: reloadBalance } = useBalance()
+  const t = useT()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [phase, setPhase] = useState<Phase>({ stage: 'idle' })
@@ -172,12 +173,12 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
       if (existingKeys.has(key)) continue
       const kind = parsers.classifyFile(file)
       if (!kind) {
-        errs.push(`${file.name}：不支持的格式`)
+        errs.push(t('import.fileNotSupported', { name: file.name }))
         continue
       }
       const sizeErr = parsers.checkSize(file, kind)
       if (sizeErr) {
-        errs.push(`${file.name}：${sizeErr}`)
+        errs.push(t('import.fileSizeError', { name: file.name, msg: sizeErr }))
         continue
       }
       processed.push({ file, kind })
@@ -186,9 +187,7 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
 
     const imageCount = processed.filter((p) => p.kind === 'image').length
     if (imageCount > 1) {
-      errs.push(
-        `只能有 1 张图片（vision 限制），当前选了 ${imageCount} 张。请移除多余的图片。`,
-      )
+      errs.push(t('import.fileImageLimit', { n: imageCount }))
     }
 
     if (errs.length > 0) setLocalErr(errs.join('\n'))
@@ -207,7 +206,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
       reset()
     } else {
       setPhase({ stage: 'selected', files: next })
-      // Re-validate image count in case removing fixes it
       const imageCount = next.filter((p) => p.kind === 'image').length
       if (imageCount <= 1) setLocalErr(null)
     }
@@ -218,7 +216,7 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
     const files = phase.files
     const imageCount = files.filter((f) => f.kind === 'image').length
     if (imageCount > 1) {
-      setLocalErr('只能有 1 张图片，请先移除多余的图片。')
+      setLocalErr(t('import.fileImageLimitShort'))
       return
     }
     setLocalErr(null)
@@ -227,7 +225,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
 
     const parsers = await loadParsers()
 
-    // Read everything
     let concatenated = ''
     let image: { base64: string; mediaType: string } | null = null
     try {
@@ -242,21 +239,22 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
         }
       }
     } catch (e) {
-      setLocalErr(`读取文件失败：${e instanceof Error ? e.message : String(e)}`)
+      setLocalErr(
+        t('import.fileExtractError', {
+          msg: e instanceof Error ? e.message : String(e),
+        }),
+      )
       setPhase({ stage: 'selected', files })
       return
     }
 
     const payloadText = concatenated.trim()
     if (!image && !payloadText) {
-      setLocalErr('所有文件都没抽取到内容')
+      setLocalErr(t('import.fileNoExtract'))
       setPhase({ stage: 'selected', files })
       return
     }
 
-    // primaryKind chooses the source enum written to events and the hint
-    // we send to Claude. Image wins when present (photo_import); otherwise
-    // the first document's kind.
     const primaryKind: ImportKind = image
       ? 'image'
       : (files[0].kind as FileKind)
@@ -268,10 +266,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
       hasImage: !!image,
     })
 
-    // Display-only estimate for the insufficient-balance toast. Real
-    // deduction is computed server-side in claude-proxy. Use the EXTRACTED
-    // text size + image bytes — never raw file binary sizes (a 10MB PPTX
-    // extracts to ~50KB of text, so file.size would overestimate 100×+).
     const textBytes = new TextEncoder().encode(payloadText).length
     const imageBytes = image ? Math.floor((image.base64.length * 3) / 4) : 0
     const estUsd = Number(
@@ -284,7 +278,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
     try {
       let events: ParsedEvent[]
       if (image) {
-        // Vision path: image + concatenated doc text as caption.
         events = await parseImage(
           image.base64,
           image.mediaType,
@@ -305,18 +298,14 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
       setCandidates(events)
       setPhase({ stage: 'review', files, primaryKind })
       if (events.length === 0) {
-        setLocalErr('Claude 没识别出事件')
+        setLocalErr(t('import.fileNoEvents'))
       }
     } catch (e) {
-      // Hook already set a generic error — overwrite with a user-actionable
-      // one when the server specifically said the balance was too low.
       if (e instanceof ClaudeProxyError && e.stage === 'insufficient_balance') {
-        setLocalErr(`需要 ${formatUSD(estUsd)}，余额不足，请充值后再试`)
+        setLocalErr(t('import.needCharge', { amount: formatUSD(estUsd) }))
       }
       setPhase({ stage: 'selected', files })
     } finally {
-      // claude-proxy deducts on start and refunds on error / empty result —
-      // either way the balance row may have moved, so force a refresh.
       reloadBalance()
     }
   }
@@ -331,9 +320,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
     setCandidates((prev) => prev.filter((_, idx) => idx !== i))
   }
 
-  // Step 1: probe DB for existing file-import events on the courses we're
-  // about to touch, then either proceed straight to save (no conflicts)
-  // or surface a 替换/追加 confirmation dialog.
   const saveAll = async () => {
     if (!user || candidates.length === 0) return
     if (phase.stage !== 'review') return
@@ -362,7 +348,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
       date_source: c.date_source ?? null,
     }))
 
-    // Dedup within this batch.
     const seen = new Set<string>()
     const rows: EventRow[] = []
     for (const r of rawRows) {
@@ -373,7 +358,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
     }
     const dedupCount = rawRows.length - rows.length
 
-    // Probe for existing file-import events per affected course.
     const affectedCourseIds = Array.from(
       new Set(rows.map((r) => r.course_id).filter((v): v is string => !!v)),
     )
@@ -387,7 +371,7 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
         .in('course_id', affectedCourseIds)
         .in('source', IMPORT_SOURCES)
       if (qErr) {
-        setLocalErr(`查已有导入事件失败：${qErr.message}`)
+        setLocalErr(t('import.fileQueryConflictError', { msg: qErr.message }))
         return
       }
       const counts = new Map<string, number>()
@@ -408,7 +392,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
     }
 
     if (conflicts.length === 0) {
-      // No prior imports on these courses → straight append.
       await executeSave(rows, 'append', [], {
         files,
         primaryKind,
@@ -417,7 +400,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
       return
     }
 
-    // Otherwise pause and ask the user.
     setPending({
       rows,
       conflicts,
@@ -427,8 +409,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
     })
   }
 
-  // Step 2: actual save. 'replace' deletes prior *_import events on the
-  // affected courses first, 'append' leans on the unique index to dedupe.
   const executeSave = async (
     rows: EventRow[],
     strategy: 'replace' | 'append',
@@ -454,7 +434,7 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
         .in('course_id', replaceCourseIds)
         .in('source', IMPORT_SOURCES)
       if (delErr) {
-        setLocalErr(`清理旧导入失败：${delErr.message}`)
+        setLocalErr(t('import.fileCleanupError', { msg: delErr.message }))
         setPhase({
           stage: 'review',
           files: ctx.files,
@@ -479,11 +459,21 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
       return
     }
 
-    const dupNote = ctx.dedupCount > 0 ? `（批内去重 ${ctx.dedupCount} 条）` : ''
+    const dupNote =
+      ctx.dedupCount > 0 ? t('import.fileSaveDupNote', { n: ctx.dedupCount }) : ''
     const msg =
       strategy === 'replace'
-        ? `已从 ${ctx.files.length} 个文件保存 ${rows.length} 条事件${dupNote}，替换掉 ${deleted} 条旧导入。`
-        : `已从 ${ctx.files.length} 个文件处理 ${rows.length} 条事件${dupNote}，按 (课程 + 标题 + 日期) 去重合并。`
+        ? t('import.fileSaveReplaceOk', {
+            files: ctx.files.length,
+            n: rows.length,
+            deleted,
+            dup: dupNote,
+          })
+        : t('import.fileSaveAppendOk', {
+            files: ctx.files.length,
+            n: rows.length,
+            dup: dupNote,
+          })
     setOkMsg(msg)
     setCandidates([])
     reset()
@@ -495,6 +485,8 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
     phase.stage === 'parsing' ||
     phase.stage === 'saving' ||
     loading
+
+  const balanceText = balance === null ? '…' : formatUSD(balance)
 
   return (
     <section className="space-y-3">
@@ -509,9 +501,6 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
         }}
       />
 
-      {/* Balance banner — mirrors MoodleImportPanel. AI 解析 will 402 from
-          the server when the balance is insufficient, and that 402 is what
-          flips `startParse` into its error branch. */}
       <div
         className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
           lowBalance
@@ -521,15 +510,15 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
       >
         <Wallet size={14} className="shrink-0" />
         <span className="flex-1">
-          余额 {balance === null ? '…' : formatUSD(balance)}
-          {lowBalance && '（余额不足，AI 解析将失败）'}
+          {t('import.balanceText', { balance: balanceText })}
+          {lowBalance && t('import.balanceLowSuffix')}
         </span>
         <button
           type="button"
           onClick={() => setTopupOpen(true)}
           className="text-[11px] px-2 py-0.5 rounded bg-accent text-white font-medium"
         >
-          充值
+          {t('import.balanceTopup')}
         </button>
       </div>
 
@@ -540,9 +529,9 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
           className="w-full p-4 rounded-xl bg-card border border-dashed border-border text-dim hover:border-accent hover:text-text transition-colors flex flex-col items-center gap-1 text-sm"
         >
           <Upload size={16} />
-          <span>上传 .pptx / .pdf / .docx 或图片（可多选，同一门课的多个文件）</span>
+          <span>{t('import.fileUploadHint')}</span>
           <span className="text-xs text-muted">
-            文档 ≤10MB · 图片 ≤5MB · 最多 1 张图片
+            {t('import.fileUploadLimit')}
           </span>
         </button>
       )}
@@ -550,13 +539,13 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
       {phase.stage === 'selected' && (
         <div className="space-y-2">
           <div className="text-xs text-dim flex items-center justify-between">
-            <span>已选 {phase.files.length} 个文件</span>
+            <span>{t('import.selectedCount', { n: phase.files.length })}</span>
             <button
               type="button"
               onClick={reset}
               className="text-dim hover:text-red-500"
             >
-              全部清空
+              {t('import.clearAll')}
             </button>
           </div>
           <ul className="rounded-xl bg-card border border-border divide-y divide-border">
@@ -580,7 +569,7 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
                   type="button"
                   onClick={() => removeFile(i)}
                   className="p-1 rounded hover:bg-hover text-muted hover:text-red-500"
-                  aria-label="移除文件"
+                  aria-label={t('import.removeFile')}
                 >
                   <X size={14} />
                 </button>
@@ -593,14 +582,14 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
               onClick={openPicker}
               className="px-3 py-2 rounded-lg bg-card border border-border text-dim hover:bg-hover text-xs flex items-center gap-1"
             >
-              <Plus size={12} /> 添加更多
+              <Plus size={12} /> {t('import.addMore')}
             </button>
             <button
               type="button"
               onClick={startParse}
               className="flex-1 py-2 rounded-lg bg-accent text-white text-xs font-medium"
             >
-              开始解析
+              {t('import.startParse')}
             </button>
           </div>
         </div>
@@ -616,28 +605,36 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
                   {phase.files[phase.current]?.file.name}
                 </div>
                 <div className="text-xs text-dim">
-                  正在读取文件 {phase.current + 1} / {phase.files.length}…
+                  {t('import.fileExtracting', {
+                    current: phase.current + 1,
+                    total: phase.files.length,
+                  })}
                 </div>
               </>
             )}
             {phase.stage === 'parsing' && (
               <>
                 <div className="text-text">
-                  {phase.files.length} 个文件
-                  {phase.hasImage ? '（含图片）' : ''}
+                  {t('import.selectedCount', { n: phase.files.length })}
+                  {phase.hasImage && t('import.fileParsingHasImage')}
                 </div>
                 <div className="text-xs text-dim">
                   {phase.chars > 0
-                    ? `${phase.chars.toLocaleString()} 字符文本`
+                    ? t('import.fileParsingChars', {
+                        chars: phase.chars.toLocaleString(),
+                      })
                     : ''}
                   {phase.chars > 0 && phase.hasImage ? ' + ' : ''}
-                  {phase.hasImage ? '1 张图片' : ''}
-                  ，{phase.hasImage ? 'Claude vision' : 'Claude'} 解析中…
+                  {phase.hasImage ? t('import.fileParsingImage') : ''}
+                  {(phase.chars > 0 || phase.hasImage) && '，'}
+                  {t('import.fileParsingProvider', {
+                    provider: phase.hasImage ? 'Claude vision' : 'Claude',
+                  })}
                 </div>
               </>
             )}
             {phase.stage === 'saving' && (
-              <div className="text-text">保存中…</div>
+              <div className="text-text">{t('import.fileSavingText')}</div>
             )}
           </div>
         </div>
@@ -661,9 +658,9 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
               <span className="truncate">
                 {phase.files.length === 1
                   ? phase.files[0].file.name
-                  : `${phase.files.length} 个文件`}
+                  : t('import.selectedCount', { n: phase.files.length })}
               </span>
-              <span className="shrink-0">· {candidates.length} 条</span>
+              <span className="shrink-0">· {candidates.length}</span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
@@ -671,14 +668,14 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
                 onClick={reset}
                 className="px-2 py-1 rounded-lg text-xs text-dim hover:bg-hover flex items-center gap-1"
               >
-                <X size={12} /> 全部丢弃
+                <X size={12} /> {t('import.discardAll')}
               </button>
               <button
                 type="button"
                 onClick={saveAll}
                 className="px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium flex items-center gap-1"
               >
-                <Check size={12} /> 保存全部
+                <Check size={12} /> {t('import.saveAll')}
               </button>
             </div>
           </div>
@@ -691,6 +688,7 @@ export default function FileImportPanel({ semester, courses, onSaved }: Props) {
                 courses={courses}
                 onChange={(partial) => patch(i, partial)}
                 onRemove={() => removeCandidate(i)}
+                t={t}
               />
             ))}
           </div>
@@ -735,10 +733,11 @@ interface ConflictModalProps {
 }
 
 function ConflictModal({ pending, onCancel, onAppend, onReplace }: ConflictModalProps) {
+  const t = useT()
   return (
     <Modal
       open={!!pending}
-      title="课程已有导入事件"
+      title={t('import.fileConflictTitle')}
       onClose={onCancel}
       footer={
         <div className="flex gap-2">
@@ -747,51 +746,50 @@ function ConflictModal({ pending, onCancel, onAppend, onReplace }: ConflictModal
             onClick={onCancel}
             className="px-3 py-2.5 rounded-lg bg-card border border-border text-dim text-sm"
           >
-            取消
+            {t('conflict.cancel')}
           </button>
           <button
             type="button"
             onClick={onAppend}
             className="px-3 py-2.5 rounded-lg bg-card border border-border text-text text-sm font-medium"
           >
-            追加
+            {t('conflict.append')}
           </button>
           <button
             type="button"
             onClick={onReplace}
             className="flex-1 py-2.5 rounded-lg bg-red-500 text-white text-sm font-medium"
           >
-            替换
+            {t('conflict.replace')}
           </button>
         </div>
       }
     >
       {pending && (
         <div className="space-y-3 text-sm">
-          <div className="text-text">
-            检测到以下课程已有来自文件导入的事件：
-          </div>
+          <div className="text-text">{t('import.fileConflictBody')}</div>
           <ul className="rounded-lg bg-card border border-border divide-y divide-border">
             {pending.conflicts.map((c) => (
               <li key={c.courseId} className="p-2.5 flex justify-between gap-2">
                 <span className="text-text truncate">{c.courseLabel}</span>
                 <span className="text-xs text-amber-600 shrink-0">
-                  已有 {c.existingCount} 条
+                  {t('import.moodle.conflictExisting', { n: c.existingCount })}
                 </span>
               </li>
             ))}
           </ul>
           <div className="text-xs text-dim leading-relaxed space-y-1">
             <div>
-              <span className="text-red-500 font-medium">替换</span>
-              ：删掉这些课程下所有 <code>ppt_import / pdf_import /
-              docx_import / photo_import</code> 来源的旧事件，然后插入本次
-              新事件。手动 / 快速添加 / 其他课程的事件不受影响。
+              <span className="text-red-500 font-medium">
+                {t('import.moodle.conflictReplaceTag')}
+              </span>
+              {t('import.fileConflictReplaceDesc')}
             </div>
             <div>
-              <span className="text-text font-medium">追加</span>
-              ：保留旧事件，按 (课程 + 标题 + 日期) 去重合并；同键会被新值
-              覆盖。
+              <span className="text-text font-medium">
+                {t('import.moodle.conflictAppendTag')}
+              </span>
+              {t('import.fileConflictAppendDesc')}
             </div>
           </div>
         </div>
@@ -805,9 +803,10 @@ interface CardProps {
   courses: Course[]
   onChange: (partial: Partial<ParsedEvent>) => void
   onRemove: () => void
+  t: TFn
 }
 
-function FileCandidateCard({ value, courses, onChange, onRemove }: CardProps) {
+function FileCandidateCard({ value, courses, onChange, onRemove, t }: CardProps) {
   const inferred = value.date_inferred === true && !!value.date
   return (
     <div
@@ -825,7 +824,7 @@ function FileCandidateCard({ value, courses, onChange, onRemove }: CardProps) {
           type="button"
           onClick={onRemove}
           className="p-1 rounded hover:bg-hover text-muted hover:text-red-500"
-          aria-label="移除"
+          aria-label={t('import.deleteSession')}
         >
           <Trash2 size={14} />
         </button>
@@ -837,7 +836,7 @@ function FileCandidateCard({ value, courses, onChange, onRemove }: CardProps) {
           onChange={(e) => onChange({ course_id: e.target.value || null })}
           className={selectCls}
         >
-          <option value="">（无课程）</option>
+          <option value="">{t('import.candidateNoCourse')}</option>
           {courses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.code} {c.name}
@@ -850,9 +849,9 @@ function FileCandidateCard({ value, courses, onChange, onRemove }: CardProps) {
           onChange={(e) => onChange({ type: e.target.value as EventType })}
           className={selectCls}
         >
-          {EVENT_TYPES.map((t) => (
-            <option key={t} value={t}>
-              {typeLabel(t)}
+          {EVENT_TYPES.map((tp) => (
+            <option key={tp} value={tp}>
+              {typeLabel(tp)}
             </option>
           ))}
         </select>
@@ -864,7 +863,6 @@ function FileCandidateCard({ value, courses, onChange, onRemove }: CardProps) {
             onChange={(e) =>
               onChange({
                 date: e.target.value || null,
-                // User-edited dates are no longer inferred.
                 date_inferred: false,
                 date_source: null,
               })
@@ -875,7 +873,7 @@ function FileCandidateCard({ value, courses, onChange, onRemove }: CardProps) {
             <AlertTriangle
               size={12}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-amber-500 pointer-events-none"
-              aria-label="日期从周数推断"
+              aria-label={t('import.candidateInferredAria')}
             />
           )}
         </div>
@@ -888,7 +886,7 @@ function FileCandidateCard({ value, courses, onChange, onRemove }: CardProps) {
         <input
           value={value.weight ?? ''}
           onChange={(e) => onChange({ weight: e.target.value || null })}
-          placeholder="权重"
+          placeholder={t('import.candidateWeightPlaceholder')}
           className={inputCls}
         />
         <label className="flex items-center gap-1.5 px-2 text-dim">
@@ -898,7 +896,7 @@ function FileCandidateCard({ value, courses, onChange, onRemove }: CardProps) {
             onChange={(e) => onChange({ is_group: e.target.checked })}
             className="accent-accent"
           />
-          Group
+          {t('import.candidateGroupLabel')}
         </label>
       </div>
 
@@ -906,11 +904,11 @@ function FileCandidateCard({ value, courses, onChange, onRemove }: CardProps) {
         <div className="flex items-center gap-1 text-[11px] text-amber-600">
           <AlertTriangle size={10} className="shrink-0" />
           <span>
-            日期由 Claude 推断自
-            <span className="italic">
-              {value.date_source ? ` "${value.date_source}"` : ' 周数引用'}
-            </span>
-            ，请核对
+            {t('import.candidateInferredHint', {
+              src: value.date_source
+                ? t('import.candidateInferredSrc', { src: value.date_source })
+                : t('import.candidateInferredFallback'),
+            })}
           </span>
         </div>
       )}

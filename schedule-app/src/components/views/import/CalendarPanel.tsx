@@ -2,6 +2,7 @@ import { AlertCircle, CalendarDays } from 'lucide-react'
 import { useCalendar } from '../../../hooks/useCalendar'
 import type { Semester } from '../../../lib/types'
 import { formatShortDate } from '../../../lib/utils'
+import { useT } from '../../../i18n'
 
 interface Props {
   semester: Semester
@@ -18,9 +19,10 @@ const TYPE_COLOR: Record<string, string> = {
 
 export default function CalendarPanel({ semester }: Props) {
   const { entries, loading, error } = useCalendar(semester.id)
+  const t = useT()
 
   if (loading) {
-    return <div className="p-6 text-center text-dim text-sm">加载中…</div>
+    return <div className="p-6 text-center text-dim text-sm">{t('common.loading')}</div>
   }
 
   if (error) {
@@ -32,12 +34,9 @@ export default function CalendarPanel({ semester }: Props) {
       <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-sm text-amber-600 flex gap-2 items-start">
         <AlertCircle size={16} className="shrink-0 mt-0.5" />
         <div>
-          <div className="font-medium mb-1">请导入校历</div>
+          <div className="font-medium mb-1">{t('import.calendar.noCalendar')}</div>
           <div className="text-xs text-amber-600/80">
-            在 Supabase SQL Editor 里执行{' '}
-            <code className="px-1 rounded bg-main/50">supabase/seed_calendar.sql</code>
-            （已随项目提交）；脚本会自动填 academic_calendar 并同步
-            semesters 的周次/考试日期。
+            {t('import.calendar.noCalendarHint')}
           </div>
         </div>
       </div>
@@ -48,7 +47,7 @@ export default function CalendarPanel({ semester }: Props) {
     <div className="space-y-2">
       <div className="flex items-center gap-2 text-xs text-dim">
         <CalendarDays size={12} />
-        {semester.code} · {entries.length} 条校历记录
+        {t('import.calendar.countLabel', { semester: semester.code, n: entries.length })}
       </div>
 
       <div className="rounded-xl bg-card border border-border divide-y divide-border">

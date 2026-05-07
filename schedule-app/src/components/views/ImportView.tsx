@@ -14,15 +14,17 @@ import CoursePastePanel from './import/CoursePastePanel'
 import MoodleImportPanel, {
   type MoodleCourse,
 } from './import/MoodleImportPanel'
+import { useT } from '../../i18n'
+import type { TKey } from '../../i18n'
 
 type ImportTab = 'calendar' | 'schedule' | 'file' | 'moodle'
 type ManualTab = 'event' | 'course'
 
-const IMPORT_TABS: { value: ImportTab; label: string; Icon: typeof CalendarDays }[] = [
-  { value: 'calendar', label: '校历', Icon: CalendarDays },
-  { value: 'schedule', label: '课程表', Icon: BookOpen },
-  { value: 'file', label: '课件', Icon: FileUp },
-  { value: 'moodle', label: 'Moodle', Icon: GraduationCap },
+const IMPORT_TABS: { value: ImportTab; labelKey: TKey; Icon: typeof CalendarDays }[] = [
+  { value: 'calendar', labelKey: 'import.tabCalendar', Icon: CalendarDays },
+  { value: 'schedule', labelKey: 'import.tabSchedule', Icon: BookOpen },
+  { value: 'file', labelKey: 'import.tabFile', Icon: FileUp },
+  { value: 'moodle', labelKey: 'import.tabMoodle', Icon: GraduationCap },
 ]
 
 export default function ImportView() {
@@ -30,11 +32,8 @@ export default function ImportView() {
   const { courses, reload: reloadCourses } = useCourses(semester?.id)
   const { reload: reloadEvents } = useEvents(semester?.id)
   const [searchParams] = useSearchParams()
+  const t = useT()
 
-  // Pure derivation from the URL — safe under StrictMode double-mount. We do
-  // NOT strip ac_data from the URL: saveAll is idempotent (existing courses
-  // UPSERT on code), and stripping broke the flow when the component remounts
-  // before the user interacts.
   const acData = useMemo(
     () => decodeAcData(searchParams.get('ac_data')),
     [searchParams],
@@ -48,8 +47,6 @@ export default function ImportView() {
   const [manualTab, setManualTab] = useState<ManualTab>('event')
   const [moodleData, setMoodleData] = useState<MoodleCourse[] | null>(null)
 
-  // Listen for the payload posted by the Moodle extension's bridge.js. Bridge
-  // double-posts (immediate + 500ms) so registering on mount is enough.
   useEffect(() => {
     if (!isMoodleSource) return
     const handler = (event: MessageEvent) => {
@@ -58,8 +55,6 @@ export default function ImportView() {
       if (!data || data.type !== 'MOODLE_IMPORT_DATA') return
       if (!Array.isArray(data.payload)) return
       setMoodleData(data.payload as MoodleCourse[])
-      // Clear ?source=moodle so a reload doesn't leave the listener armed
-      // with nothing to receive.
       window.history.replaceState({}, '', '/import')
     }
     window.addEventListener('message', handler)
@@ -69,8 +64,8 @@ export default function ImportView() {
   if (!semester) {
     return (
       <div className="p-8 text-center text-dim">
-        <p>尚未创建学期。</p>
-        <p className="text-sm mt-2">请先到 Supabase 添加一条 semesters 记录。</p>
+        <p>{t('timeline.noSemester')}</p>
+        <p className="text-sm mt-2">{t('timeline.noSemesterHint')}</p>
       </div>
     )
   }
@@ -87,7 +82,7 @@ export default function ImportView() {
       {/* Import tabs */}
       <section className="space-y-3">
         <div className="flex gap-1 bg-card rounded-lg p-1 border border-border">
-          {IMPORT_TABS.map(({ value, label, Icon }) => (
+          {IMPORT_TABS.map(({ value, labelKey, Icon }) => (
             <button
               key={value}
               onClick={() => setImportTab(value)}
@@ -95,7 +90,7 @@ export default function ImportView() {
                 importTab === value ? 'bg-accent text-white' : 'text-dim'
               }`}
             >
-              <Icon size={14} /> {label}
+              <Icon size={14} /> {t(labelKey)}
             </button>
           ))}
         </div>
@@ -132,7 +127,7 @@ export default function ImportView() {
       {/* Manual forms */}
       <section className="space-y-3">
         <div className="text-xs font-semibold tracking-wider text-muted uppercase">
-          手动添加
+          {t('import.manualHeading')}
         </div>
         <div className="flex gap-2 bg-card rounded-lg p-1 border border-border">
           <button
@@ -141,7 +136,7 @@ export default function ImportView() {
               manualTab === 'event' ? 'bg-accent text-white' : 'text-dim'
             }`}
           >
-            <Plus size={14} className="inline mr-1" /> 事件
+            <Plus size={14} className="inline mr-1" /> {t('import.manualEvent')}
           </button>
           <button
             onClick={() => setManualTab('course')}
@@ -149,7 +144,7 @@ export default function ImportView() {
               manualTab === 'course' ? 'bg-accent text-white' : 'text-dim'
             }`}
           >
-            <Plus size={14} className="inline mr-1" /> 课程
+            <Plus size={14} className="inline mr-1" /> {t('import.manualCourse')}
           </button>
         </div>
 
@@ -163,9 +158,6 @@ export default function ImportView() {
   )
 }
 
-// Payload shape produced by the AC Online Chrome extension. The extension
-// base64-encodes JSON.stringify({ courses, ... }) after UTF-8 encoding, so the
-// CJK course names survive the round-trip.
 interface AcDataPayload {
   courses: ParsedCourse[]
 }

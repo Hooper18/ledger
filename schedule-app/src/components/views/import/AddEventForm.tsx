@@ -3,6 +3,7 @@ import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useMutationGuard } from '../../../hooks/useMutationGuard'
 import type { Course, EventType } from '../../../lib/types'
+import { useT } from '../../../i18n'
 
 const EVENT_TYPES: { value: EventType; label: string }[] = [
   { value: 'deadline', label: 'DDL' },
@@ -27,6 +28,7 @@ interface Props {
 export default function AddEventForm({ semesterId, courses }: Props) {
   const { user } = useAuth()
   const guard = useMutationGuard()
+  const t = useT()
   const [courseId, setCourseId] = useState<string>('')
   const [title, setTitle] = useState('')
   const [type, setType] = useState<EventType>('deadline')
@@ -75,13 +77,13 @@ export default function AddEventForm({ semesterId, courses }: Props) {
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <Field label="课程">
+      <Field label={t('import.addEvent.courseLabel')}>
         <select
           value={courseId}
           onChange={(e) => setCourseId(e.target.value)}
           className={selectCls}
         >
-          <option value="">（无关联课程）</option>
+          <option value="">{t('import.addEvent.noCourse')}</option>
           {courses.map((c) => (
             <option key={c.id} value={c.id}>
               {c.code} {c.name}
@@ -90,32 +92,32 @@ export default function AddEventForm({ semesterId, courses }: Props) {
         </select>
       </Field>
 
-      <Field label="标题 *">
+      <Field label={t('import.addEvent.titleLabel')}>
         <input
           required
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className={inputCls}
-          placeholder="Quiz 3 / Assignment 2"
+          placeholder={t('import.addEvent.titlePlaceholder')}
         />
       </Field>
 
-      <Field label="类型 *">
+      <Field label={t('import.addEvent.typeLabel')}>
         <select
           value={type}
           onChange={(e) => setType(e.target.value as EventType)}
           className={selectCls}
         >
-          {EVENT_TYPES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
+          {EVENT_TYPES.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
             </option>
           ))}
         </select>
       </Field>
 
       <div className="grid grid-cols-2 gap-3">
-        <Field label="日期">
+        <Field label={t('import.addEvent.dateLabel')}>
           <input
             type="date"
             value={date}
@@ -123,7 +125,7 @@ export default function AddEventForm({ semesterId, courses }: Props) {
             className={inputCls}
           />
         </Field>
-        <Field label="时间">
+        <Field label={t('import.addEvent.timeLabel')}>
           <input
             type="time"
             value={time}
@@ -133,11 +135,11 @@ export default function AddEventForm({ semesterId, courses }: Props) {
         </Field>
       </div>
 
-      <Field label="权重">
+      <Field label={t('import.addEvent.weightLabel')}>
         <input
           value={weight}
           onChange={(e) => setWeight(e.target.value)}
-          placeholder="e.g. 15%"
+          placeholder={t('import.addEvent.weightPlaceholder')}
           className={inputCls}
         />
       </Field>
@@ -149,10 +151,10 @@ export default function AddEventForm({ semesterId, courses }: Props) {
           onChange={(e) => setIsGroup(e.target.checked)}
           className="accent-accent"
         />
-        Group assignment
+        {t('import.addEvent.groupLabel')}
       </label>
 
-      <Field label="备注">
+      <Field label={t('import.addEvent.notesLabel')}>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -162,7 +164,7 @@ export default function AddEventForm({ semesterId, courses }: Props) {
       </Field>
 
       {err && <div className="text-sm text-red-500">{err}</div>}
-      {ok && <div className="text-sm text-emerald-500">已添加。</div>}
+      {ok && <div className="text-sm text-emerald-500">{t('import.addEvent.addedOk')}</div>}
 
       <button
         type="submit"
@@ -170,7 +172,11 @@ export default function AddEventForm({ semesterId, courses }: Props) {
         title={guard.title}
         className="w-full py-3 rounded-lg bg-accent text-white font-medium disabled:opacity-60"
       >
-        {saving ? '保存中…' : guard.disabled ? '离线 · 暂不可保存' : '保存事件'}
+        {saving
+          ? t('import.addEvent.saving')
+          : guard.disabled
+            ? t('import.addEvent.offline')
+            : t('import.addEvent.submit')}
       </button>
     </form>
   )

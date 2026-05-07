@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { useAuth } from '../../../contexts/AuthContext'
 import { useMutationGuard } from '../../../hooks/useMutationGuard'
+import { useT } from '../../../i18n'
 
 const PRESET_COLORS = [
   '#3B82F6',
@@ -22,6 +23,7 @@ interface Props {
 export default function AddCourseForm({ semesterId, onCreated }: Props) {
   const { user } = useAuth()
   const guard = useMutationGuard()
+  const t = useT()
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [lecturer, setLecturer] = useState('')
@@ -69,7 +71,7 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
   return (
     <form onSubmit={submit} className="space-y-3">
       <div className="grid grid-cols-2 gap-3">
-        <Field label="代码 *">
+        <Field label={t('import.addCourse.codeLabel')}>
           <input
             required
             value={code}
@@ -78,7 +80,7 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
             placeholder="CS101"
           />
         </Field>
-        <Field label="学分">
+        <Field label={t('import.addCourse.creditLabel')}>
           <input
             type="number"
             value={credit}
@@ -89,7 +91,7 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
         </Field>
       </div>
 
-      <Field label="名称 *">
+      <Field label={t('import.addCourse.nameLabel')}>
         <input
           required
           value={name}
@@ -99,7 +101,7 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
         />
       </Field>
 
-      <Field label="讲师">
+      <Field label={t('import.addCourse.lecturerLabel')}>
         <input
           value={lecturer}
           onChange={(e) => setLecturer(e.target.value)}
@@ -107,7 +109,7 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
         />
       </Field>
 
-      <Field label="讲师邮箱">
+      <Field label={t('import.addCourse.lecturerEmailLabel')}>
         <input
           type="email"
           value={lecturerEmail}
@@ -116,7 +118,7 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
         />
       </Field>
 
-      <Field label="颜色">
+      <Field label={t('import.addCourse.colorLabel')}>
         <div className="flex gap-2 flex-wrap">
           {PRESET_COLORS.map((c) => (
             <button
@@ -127,13 +129,13 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
                 color === c ? 'border-text scale-110' : 'border-transparent'
               }`}
               style={{ backgroundColor: c }}
-              aria-label={`选择颜色 ${c}`}
+              aria-label={t('import.addCourse.colorAria', { color: c })}
             />
           ))}
         </div>
       </Field>
 
-      <Field label="备注">
+      <Field label={t('import.addCourse.notesLabel')}>
         <textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -143,7 +145,7 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
       </Field>
 
       {err && <div className="text-sm text-red-500">{err}</div>}
-      {ok && <div className="text-sm text-emerald-500">已添加。</div>}
+      {ok && <div className="text-sm text-emerald-500">{t('import.addCourse.addedOk')}</div>}
 
       <button
         type="submit"
@@ -151,7 +153,11 @@ export default function AddCourseForm({ semesterId, onCreated }: Props) {
         title={guard.title}
         className="w-full py-3 rounded-lg bg-accent text-white font-medium disabled:opacity-60"
       >
-        {saving ? '保存中…' : guard.disabled ? '离线 · 暂不可保存' : '保存课程'}
+        {saving
+          ? t('import.addCourse.saving')
+          : guard.disabled
+            ? t('import.addCourse.offline')
+            : t('import.addCourse.submit')}
       </button>
     </form>
   )

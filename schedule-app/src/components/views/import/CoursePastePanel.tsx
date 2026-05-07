@@ -12,8 +12,19 @@ import { useAuth } from '../../../contexts/AuthContext'
 import type { Semester } from '../../../lib/types'
 import { formatUSD, LOW_BALANCE_THRESHOLD_USD } from '../../../lib/balance'
 import TopupModal from '../../TopupModal'
+import { useT } from '../../../i18n'
+import type { TFn, TKey } from '../../../i18n'
 
-const DAY_LABELS = ['日', '一', '二', '三', '四', '五', '六']
+const DAY_SHORT_KEYS: TKey[] = [
+  'dayShort.sun',
+  'dayShort.mon',
+  'dayShort.tue',
+  'dayShort.wed',
+  'dayShort.thu',
+  'dayShort.fri',
+  'dayShort.sat',
+]
+
 const SESSION_TYPES: ParsedCourseSession['type'][] = [
   'lecture',
   'tutorial',
@@ -50,6 +61,7 @@ export default function CoursePastePanel({
   const { user } = useAuth()
   const { parseCourseTimetable, loading, error } = useClaude()
   const { balance, reload: reloadBalance } = useBalance()
+  const t = useT()
   const [input, setInput] = useState('')
   const [candidates, setCandidates] = useState<ParsedCourse[]>(
     initialCandidates ?? [],
@@ -69,16 +81,13 @@ export default function CoursePastePanel({
       const courses = await parseCourseTimetable(input)
       setCandidates(courses)
       if (courses.length === 0) {
-        setSaveErr('没解析到课程，检查粘贴内容是否完整')
+        setSaveErr(t('import.paste.noResult'))
       }
     } catch (e) {
       if (e instanceof ClaudeProxyError && e.stage === 'insufficient_balance') {
-        setSaveErr('余额不足，请先充值或兑换邀请码后再试')
+        setSaveErr(t('import.insufficientBalance'))
       }
-      // hook.error shows for other errors
     } finally {
-      // Pre-deduct + refund-on-failure happens server-side — pull fresh
-      // balance so the banner reflects reality after the parse attempt.
       reloadBalance()
     }
   }
@@ -123,9 +132,6 @@ export default function CoursePastePanel({
     setSaving(true)
     setSaveErr(null)
 
-    // 1) Look up which candidate codes already exist for this user+semester
-    //    so we can UPDATE them instead of INSERTing (DB has a unique
-    //    constraint on user_id+semester_id+code+name_full).
     const codes = candidates.map((c) => c.code)
     const { data: existing, error: fetchErr } = await supabase
       .from('courses')
@@ -135,7 +141,7 @@ export default function CoursePastePanel({
       .in('code', codes)
     if (fetchErr) {
       setSaving(false)
-      setSaveErr(`查已有课程失败：${fetchErr.message}`)
+      setSaveErr(t('import.paste.saveLookupErr', { msg: fetchErr.message }))
       return
     }
     const existingByCode = new Map<string, string>()
@@ -143,9 +149,6 @@ export default function CoursePastePanel({
       existingByCode.set(row.code as string, row.id as string)
     }
 
-    // 2) Partition into inserts (new codes) and updates (existing codes).
-    //    We keep sort_order/color stable on updates (don't overwrite user
-    //    color choices), only refresh name/name_full/credit/lecturer.
     const toInsert: Array<{
       user_id: string
       semester_id: string
@@ -184,7 +187,6 @@ export default function CoursePastePanel({
       }
     })
 
-    // 3) Batch INSERT new courses; collect their ids.
     const codeToId = new Map<string, string>(existingByCode)
     if (toInsert.length > 0) {
       const { data: inserted, error: insErr } = await supabase
@@ -193,7 +195,7 @@ export default function CoursePastePanel({
         .select('id, code')
       if (insErr) {
         setSaving(false)
-        setSaveErr(`写入新课程失败：${insErr.message}`)
+        setSaveErr(t('import.paste.saveInsertErr', { msg: insErr.message }))
         return
       }
       for (const row of inserted ?? []) {
@@ -201,8 +203,6 @@ export default function CoursePastePanel({
       }
     }
 
-    // 4) UPDATE existing courses one-by-one (different values per row, so
-    //    a single UPSERT won't help).
     for (const { id, row } of toUpdate) {
       const { error: upErr } = await supabase
         .from('courses')
@@ -210,14 +210,11 @@ export default function CoursePastePanel({
         .eq('id', id)
       if (upErr) {
         setSaving(false)
-        setSaveErr(`更新课程失败 (id=${id})：${upErr.message}`)
+        setSaveErr(t('import.paste.saveUpdateErr', { id, msg: upErr.message }))
         return
       }
     }
 
-    // 5) Replace weekly_schedule rows for every touched course: delete old
-    //    then insert new. This handles timetable edits cleanly — the old
-    //    schedule is no longer authoritative once the user re-imports.
     const allCourseIds = candidates
       .map((c) => codeToId.get(c.code))
       .filter((v): v is string => !!v)
@@ -228,16 +225,11 @@ export default function CoursePastePanel({
         .in('course_id', allCourseIds)
       if (delErr) {
         setSaving(false)
-        setSaveErr(`清理旧课表失败：${delErr.message}`)
+        setSaveErr(t('import.paste.saveCleanScheduleErr', { msg: delErr.message }))
         return
       }
     }
 
-    // Build schedule rows, dedupe within the batch on
-    // (course_id, day_of_week, start_time) — the unique key on
-    // weekly_schedule. Claude occasionally produces duplicate slots
-    // (e.g. listing the same course time twice as both lecture and
-    // tutorial), which would otherwise fail the INSERT immediately.
     const scheduleRows: Array<{
       course_id: string
       day_of_week: number
@@ -279,7 +271,7 @@ export default function CoursePastePanel({
         .insert(scheduleRows)
       if (schedErr) {
         setSaving(false)
-        setSaveErr(`写入 weekly_schedule 失败：${schedErr.message}`)
+        setSaveErr(t('import.paste.saveScheduleErr', { msg: schedErr.message }))
         return
       }
     }
@@ -287,20 +279,26 @@ export default function CoursePastePanel({
     setSaving(false)
     const insertedN = toInsert.length
     const updatedN = toUpdate.length
-    const dupNote = slotDupCount > 0 ? `（合并 ${slotDupCount} 条重复时段）` : ''
+    const dupNote =
+      slotDupCount > 0 ? t('import.paste.saveDupNote', { n: slotDupCount }) : ''
     setOkMsg(
-      `已处理 ${candidates.length} 门课程（新增 ${insertedN} / 更新 ${updatedN}），${scheduleRows.length} 条课表${dupNote}。`,
+      t('import.paste.saveSummary', {
+        courses: candidates.length,
+        ins: insertedN,
+        upd: updatedN,
+        rows: scheduleRows.length,
+        dup: dupNote,
+      }),
     )
     setCandidates([])
     setInput('')
     onSaved()
   }
 
+  const balanceText = balance === null ? '…' : formatUSD(balance)
+
   return (
     <section className="space-y-3">
-      {/* Balance banner — claude-proxy charges for course_import too. Cost
-          is usually tiny (plain text paste), but the server will still 402
-          if the balance is empty. */}
       <div
         className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs ${
           lowBalance
@@ -310,16 +308,16 @@ export default function CoursePastePanel({
       >
         <Wallet size={14} className="shrink-0" />
         <span className="flex-1">
-          余额 {balance === null ? '…' : formatUSD(balance)}
+          {t('import.balanceText', { balance: balanceText })}
           <span className="ml-1 text-[10px] text-muted">USD</span>
-          {lowBalance && '（余额不足，AI 解析将失败）'}
+          {lowBalance && t('import.balanceLowSuffix')}
         </span>
         <button
           type="button"
           onClick={() => setTopupOpen(true)}
           className="text-[11px] px-2 py-0.5 rounded bg-accent text-white font-medium"
         >
-          充值
+          {t('import.balanceTopup')}
         </button>
       </div>
 
@@ -328,18 +326,20 @@ export default function CoursePastePanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           rows={8}
-          placeholder="从 XMUM AC Online 课程表页面复制整块文字粘贴在这里（包含课程代码、名称、讲师、上课日/时段/教室/组别）"
+          placeholder={t('import.paste.pastePlaceholder')}
           className="w-full px-3 py-2 rounded-lg bg-card border border-border text-text text-sm placeholder:text-muted focus:outline-none focus:border-accent resize-y"
           disabled={loading}
         />
         <div className="flex items-center justify-between">
-          <div className="text-xs text-dim">{input.length} 字符</div>
+          <div className="text-xs text-dim">
+            {t('import.paste.charsCount', { n: input.length })}
+          </div>
           <button
             type="submit"
             disabled={loading || !input.trim()}
             className="px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium disabled:opacity-40 flex items-center gap-1"
           >
-            <Sparkles size={12} /> {loading ? '解析中…' : '解析'}
+            <Sparkles size={12} /> {loading ? t('import.parsing') : t('import.parse')}
           </button>
         </div>
       </form>
@@ -352,7 +352,7 @@ export default function CoursePastePanel({
         <>
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold tracking-wider text-muted uppercase">
-              待确认 · {candidates.length} 门课
+              {t('import.pendingHeadingCourses', { n: candidates.length })}
             </h3>
             <div className="flex items-center gap-2">
               <button
@@ -360,7 +360,7 @@ export default function CoursePastePanel({
                 onClick={() => setCandidates([])}
                 className="px-2 py-1 rounded-lg text-xs text-dim hover:bg-hover flex items-center gap-1"
               >
-                <X size={12} /> 全部丢弃
+                <X size={12} /> {t('import.discardAll')}
               </button>
               <button
                 type="button"
@@ -368,7 +368,7 @@ export default function CoursePastePanel({
                 disabled={saving}
                 className="px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium disabled:opacity-60 flex items-center gap-1"
               >
-                <Check size={12} /> {saving ? '保存中…' : '保存全部'}
+                <Check size={12} /> {saving ? t('import.saving') : t('import.saveAll')}
               </button>
             </div>
           </div>
@@ -382,6 +382,7 @@ export default function CoursePastePanel({
                 onChangeSession={(si, p) => patchSession(ci, si, p)}
                 onRemoveSession={(si) => removeSession(ci, si)}
                 onRemove={() => removeCourse(ci)}
+                t={t}
               />
             ))}
           </div>
@@ -399,6 +400,7 @@ interface CandidateProps {
   onChangeSession: (si: number, partial: Partial<ParsedCourseSession>) => void
   onRemoveSession: (si: number) => void
   onRemove: () => void
+  t: TFn
 }
 
 function CourseCandidate({
@@ -407,6 +409,7 @@ function CourseCandidate({
   onChangeSession,
   onRemoveSession,
   onRemove,
+  t,
 }: CandidateProps) {
   return (
     <div className="p-3 rounded-xl bg-card border border-border space-y-2">
@@ -425,7 +428,7 @@ function CourseCandidate({
           type="button"
           onClick={onRemove}
           className="p-1 rounded hover:bg-hover text-muted hover:text-red-500"
-          aria-label="删除课程"
+          aria-label={t('import.deleteCourse')}
         >
           <Trash2 size={14} />
         </button>
@@ -437,7 +440,7 @@ function CourseCandidate({
           onChange={(e) =>
             onChangeCourse({ lecturer: e.target.value || null })
           }
-          placeholder="讲师"
+          placeholder={t('import.sessionLecturer')}
           className={inputCls}
         />
         <input
@@ -448,14 +451,14 @@ function CourseCandidate({
               credit: e.target.value ? Number(e.target.value) : null,
             })
           }
-          placeholder="学分"
+          placeholder={t('import.sessionCredit')}
           className={inputCls}
         />
       </div>
 
       <div className="space-y-1.5">
         <div className="text-[10px] font-medium tracking-wider text-muted uppercase">
-          课时 · {value.sessions.length}
+          {t('import.sessionsCount', { n: value.sessions.length })}
         </div>
         {value.sessions.map((s, si) => (
           <div
@@ -469,9 +472,9 @@ function CourseCandidate({
               }
               className={cellCls}
             >
-              {DAY_LABELS.map((l, i) => (
+              {DAY_SHORT_KEYS.map((key, i) => (
                 <option key={i} value={i}>
-                  周{l}
+                  {t('import.weekDayPrefix', { day: t(key) })}
                 </option>
               ))}
             </select>
@@ -500,9 +503,9 @@ function CourseCandidate({
               }
               className={cellCls}
             >
-              {SESSION_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {SESSION_TYPES.map((tp) => (
+                <option key={tp} value={tp}>
+                  {tp}
                 </option>
               ))}
             </select>
@@ -510,7 +513,7 @@ function CourseCandidate({
               type="button"
               onClick={() => onRemoveSession(si)}
               className="p-1 rounded hover:bg-hover text-muted hover:text-red-500"
-              aria-label="删除"
+              aria-label={t('import.deleteSession')}
             >
               <Trash2 size={12} />
             </button>
@@ -519,7 +522,7 @@ function CourseCandidate({
               onChange={(e) =>
                 onChangeSession(si, { location: e.target.value || null })
               }
-              placeholder="教室"
+              placeholder={t('import.sessionLocation')}
               className={`${cellCls} col-span-3`}
             />
             <input
@@ -527,7 +530,7 @@ function CourseCandidate({
               onChange={(e) =>
                 onChangeSession(si, { group_number: e.target.value || null })
               }
-              placeholder="组别"
+              placeholder={t('import.sessionGroup')}
               className={cellCls}
             />
             <input
