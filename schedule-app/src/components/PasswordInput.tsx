@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
+import { useT } from '../i18n'
 
 type Props = {
   value: string
@@ -21,6 +22,7 @@ export default function PasswordInput({
   minLength,
 }: Props) {
   const [show, setShow] = useState(false)
+  const t = useT()
   return (
     <div className="relative">
       <input
@@ -37,7 +39,7 @@ export default function PasswordInput({
       <button
         type="button"
         tabIndex={-1}
-        aria-label={show ? '隐藏密码' : '显示密码'}
+        aria-label={show ? t('password.hideAria') : t('password.showAria')}
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setShow((s) => !s)}
         className="absolute inset-y-0 right-0 flex items-center px-3 text-muted hover:text-text transition-colors"

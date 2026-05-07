@@ -1,6 +1,7 @@
 import { CheckCircle2, AlertCircle, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useInviteRedemption } from '../hooks/useInviteRedemption'
+import { useT } from '../i18n'
 
 // Renders a dismissible banner at the top of the screen after the invite-
 // redemption hook returns. Mounted inside AppRoutes so it persists across
@@ -8,13 +9,12 @@ import { useInviteRedemption } from '../hooks/useInviteRedemption'
 export default function InviteRedemptionBanner() {
   const state = useInviteRedemption()
   const [dismissed, setDismissed] = useState(false)
+  const t = useT()
 
-  // Auto-dismiss success banners after 6s. Failure banners stay until the
-  // user clicks the close button.
   useEffect(() => {
     if (state?.status !== 'success') return
-    const t = setTimeout(() => setDismissed(true), 6000)
-    return () => clearTimeout(t)
+    const tm = setTimeout(() => setDismissed(true), 6000)
+    return () => clearTimeout(tm)
   }, [state])
 
   if (!state || dismissed) return null
@@ -35,7 +35,7 @@ export default function InviteRedemptionBanner() {
         <button
           onClick={() => setDismissed(true)}
           className="p-0.5 rounded hover:bg-black/5 opacity-70"
-          aria-label="关闭"
+          aria-label={t('inviteBanner.closeAria')}
         >
           <X size={14} />
         </button>

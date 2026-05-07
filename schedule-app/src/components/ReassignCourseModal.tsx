@@ -4,13 +4,14 @@ import Modal from './shared/Modal'
 import { supabase } from '../lib/supabase'
 import { useMutationGuard } from '../hooks/useMutationGuard'
 import type { Course } from '../lib/types'
+import { useT } from '../i18n'
+import type { TFn } from '../i18n'
 
 interface Props {
   open: boolean
   onClose: () => void
   courses: Course[]
   eventIds: string[]
-  /** The detected / displayed course code of the events being reassigned. */
   hintCode?: string | null
   onDone: () => void
 }
@@ -29,13 +30,12 @@ export default function ReassignCourseModal({
   onDone,
 }: Props) {
   const guard = useMutationGuard()
+  const t = useT()
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   const [result, setResult] = useState<Result | null>(null)
 
-  // Reset transient state each time the modal re-opens so a second invocation
-  // doesn't flash the previous result.
   useEffect(() => {
     if (!open) return
     setSelectedId(null)
@@ -49,10 +49,6 @@ export default function ReassignCourseModal({
     setSaving(true)
     setErr(null)
 
-    // 1) Fetch the source events' (title, date) so we can dedupe against the
-    //    target course's existing rows before issuing the UPDATE. The DB has
-    //    a UNIQUE(user_id, course_id, title, date) — writing a duplicate
-    //    would abort the whole batch.
     const { data: candidates, error: candErr } = await supabase
       .from('events')
       .select('id, title, date')
@@ -63,8 +59,6 @@ export default function ReassignCourseModal({
       return
     }
 
-    // 2) Fetch existing events under the target course to build a conflict
-    //    set. RLS already scopes to the current user.
     const { data: existing, error: exErr } = await supabase
       .from('events')
       .select('title, date')
@@ -79,8 +73,6 @@ export default function ReassignCourseModal({
       (existing ?? []).map((e) => keyOf(e.title as string, (e.date as string | null) ?? null)),
     )
 
-    // 3) Partition: duplicates get deleted (target already has that row);
-    //    the rest get UPDATEd in a single call.
     const duplicateIds: string[] = []
     const moveIds: string[] = []
     for (const c of candidates ?? []) {
@@ -129,20 +121,21 @@ export default function ReassignCourseModal({
   return (
     <Modal
       open={open}
-      title={result ? '关联完成' : '关联到课程'}
+      title={result ? t('reassign.titleDone') : t('reassign.title')}
       onClose={result ? finishAndClose : onClose}
       size="md"
     >
       {result ? (
-        <ResultPanel result={result} onClose={finishAndClose} />
+        <ResultPanel result={result} onClose={finishAndClose} t={t} />
       ) : (
         <div className="space-y-3">
           <div className="text-xs text-dim leading-relaxed">
-            将选中的 <span className="text-text font-medium">{eventIds.length}</span>{' '}
-            条事件批量关联到以下课程
+            {t('reassign.introPre')}
+            <span className="text-text font-medium">{eventIds.length}</span>
+            {t('reassign.introMid')}
             {hintCode && (
               <>
-                。原课程代码识别为{' '}
+                {t('reassign.hintPre')}
                 <span className="text-text font-mono">{hintCode}</span>
               </>
             )}
@@ -150,7 +143,7 @@ export default function ReassignCourseModal({
 
           {courses.length === 0 ? (
             <div className="py-10 text-center text-sm text-dim">
-              当前学期没有可选课程，请先导入课程表。
+              {t('reassign.noCoursesAvailable')}
             </div>
           ) : (
             <ul className="space-y-1.5 max-h-[55vh] overflow-y-auto pr-1">
@@ -196,7 +189,7 @@ export default function ReassignCourseModal({
               onClick={onClose}
               className="flex-1 py-2 rounded-lg border border-border text-sm text-text hover:bg-hover"
             >
-              取消
+              {t('reassign.cancel')}
             </button>
             <button
               type="button"
@@ -206,7 +199,7 @@ export default function ReassignCourseModal({
               className="flex-1 py-2 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60 flex items-center justify-center gap-1.5"
             >
               {saving && <Loader2 size={14} className="animate-spin" />}
-              {guard.disabled ? '离线 · 暂不可关联' : '确认关联'}
+              {guard.disabled ? t('reassign.offline') : t('reassign.submit')}
             </button>
           </div>
         </div>
@@ -218,18 +211,20 @@ export default function ReassignCourseModal({
 function ResultPanel({
   result,
   onClose,
+  t,
 }: {
   result: Result
   onClose: () => void
+  t: TFn
 }) {
   const { moved, removed } = result
   let summary: string
   if (moved === 0 && removed > 0) {
-    summary = `所有事件在目标课程下已存在，已清理 ${removed} 条重复项。`
+    summary = t('reassign.summaryAllDup', { n: removed })
   } else if (removed === 0) {
-    summary = `成功关联 ${moved} 条事件。`
+    summary = t('reassign.summaryAllMoved', { n: moved })
   } else {
-    summary = `成功关联 ${moved} 条，跳过 ${removed} 条重复事件（已从原位置删除）。`
+    summary = t('reassign.summaryMixed', { moved, removed })
   }
 
   return (
@@ -248,7 +243,7 @@ function ResultPanel({
         onClick={onClose}
         className="w-full py-2.5 rounded-lg bg-accent text-white text-sm font-medium"
       >
-        完成
+        {t('reassign.done')}
       </button>
     </div>
   )

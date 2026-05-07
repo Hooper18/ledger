@@ -12,43 +12,35 @@ import { supabase } from '../lib/supabase'
 import { useBalance, type BalanceTransaction } from '../hooks/useBalance'
 import { formatUSD, LOW_BALANCE_THRESHOLD_USD } from '../lib/balance'
 import { useAuth } from '../contexts/AuthContext'
+import { useT } from '../i18n'
+import type { TFn } from '../i18n'
 
 type Props = {
   onClose: () => void
 }
 
-// Developer's WeChat ID. Users get in touch here for manual topups.
 const DEV_WECHAT = 'hituchenguang'
 
-// Maps the RAISE EXCEPTION strings from redeem_invite_code() to UI copy.
-function friendlyRedeemError(raw: string): string {
-  if (raw.includes('already redeemed')) {
-    return '你已兑换过邀请码，每个账号只能兑换一次'
-  }
-  if (raw.includes('invalid or used code')) {
-    return '邀请码无效或已被使用'
-  }
-  if (raw.includes('not authenticated')) {
-    return '请先登录'
-  }
+function friendlyRedeemError(raw: string, t: TFn): string {
+  if (raw.includes('already redeemed')) return t('topup.redeemErrAlreadyDone')
+  if (raw.includes('invalid or used code')) return t('topup.redeemErrInvalid')
+  if (raw.includes('not authenticated')) return t('topup.redeemErrAuth')
   return raw
 }
 
 export default function TopupModal({ onClose }: Props) {
   const { user } = useAuth()
   const { balance, transactions, loading, reload } = useBalance()
+  const t = useT()
   const low = balance !== null && balance < LOW_BALANCE_THRESHOLD_USD
 
   return (
-    <Modal open title="余额与充值" onClose={onClose} size="md">
+    <Modal open title={t('topup.title')} onClose={onClose} size="md">
       <div className="space-y-5">
-        {/* Balance header — current balance + refresh. Low-balance banner
-            lives inside this card so it stays visible when the user
-            scrolls the redeem / transactions sections below. */}
         <div className="bg-card border border-border rounded-xl p-4 flex items-center justify-between">
           <div>
             <div className="text-xs text-muted flex items-center gap-1.5">
-              <Wallet size={12} /> 当前余额
+              <Wallet size={12} /> {t('topup.currentBalance')}
             </div>
             <div
               className={`text-2xl font-semibold mt-1 ${low ? 'text-red-500' : 'text-text'}`}
@@ -59,17 +51,17 @@ export default function TopupModal({ onClose }: Props) {
               </span>
             </div>
             <div className="text-[10px] text-muted mt-1">
-              账户金额统一以美元（USD）计价
+              {t('topup.usdNote')}
             </div>
             {low && (
-              <div className="text-xs text-red-500 mt-1">余额不足，请充值</div>
+              <div className="text-xs text-red-500 mt-1">{t('topup.lowBalance')}</div>
             )}
           </div>
           <button
             onClick={reload}
             disabled={loading}
             className="p-2 rounded-lg hover:bg-hover text-dim disabled:opacity-50"
-            aria-label="刷新余额"
+            aria-label={t('topup.refreshAria')}
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -86,6 +78,7 @@ export default function TopupModal({ onClose }: Props) {
 }
 
 function RedeemSection({ onRedeemed }: { onRedeemed: () => void }) {
+  const t = useT()
   const [code, setCode] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [err, setErr] = useState<string | null>(null)
@@ -94,7 +87,7 @@ function RedeemSection({ onRedeemed }: { onRedeemed: () => void }) {
   const redeem = async () => {
     const trimmed = code.trim()
     if (!trimmed) {
-      setErr('请输入邀请码')
+      setErr(t('topup.redeemEmpty'))
       return
     }
     setSubmitting(true)
@@ -105,7 +98,7 @@ function RedeemSection({ onRedeemed }: { onRedeemed: () => void }) {
     })
     setSubmitting(false)
     if (error) {
-      setErr(friendlyRedeemError(error.message))
+      setErr(friendlyRedeemError(error.message, t))
       return
     }
     const newBalance =
@@ -114,8 +107,8 @@ function RedeemSection({ onRedeemed }: { onRedeemed: () => void }) {
         : null
     setSuccessMsg(
       newBalance !== null
-        ? `兑换成功，已到账 $1.00（余额 ${formatUSD(newBalance)}）`
-        : '兑换成功，已到账 $1.00',
+        ? t('topup.redeemSuccess', { balance: formatUSD(newBalance) })
+        : t('topup.redeemSuccessNoBalance'),
     )
     setCode('')
     onRedeemed()
@@ -124,14 +117,12 @@ function RedeemSection({ onRedeemed }: { onRedeemed: () => void }) {
   return (
     <section className="space-y-2">
       <h3 className="text-sm font-semibold flex items-center gap-1.5">
-        <Ticket size={14} className="text-accent" /> 兑换邀请码
+        <Ticket size={14} className="text-accent" /> {t('topup.redeemHeading')}
       </h3>
       <div className="flex gap-2">
         <input
           value={code}
           onChange={(e) => {
-            // Invite codes are uppercase alphanumeric; normalize aggressively
-            // so a pasted lowercase / padded value still matches.
             const v = e.target.value.toUpperCase().replace(/\s+/g, '')
             setCode(v)
             if (err) setErr(null)
@@ -143,7 +134,7 @@ function RedeemSection({ onRedeemed }: { onRedeemed: () => void }) {
               redeem()
             }
           }}
-          placeholder="邀请码"
+          placeholder={t('topup.redeemPlaceholder')}
           maxLength={16}
           disabled={submitting}
           className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-card border border-border text-text font-mono tracking-widest placeholder:text-muted placeholder:tracking-normal placeholder:font-sans focus:outline-none focus:border-accent uppercase text-sm"
@@ -154,7 +145,7 @@ function RedeemSection({ onRedeemed }: { onRedeemed: () => void }) {
           disabled={submitting || !code.trim()}
           className="px-4 py-2 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60 shrink-0"
         >
-          {submitting ? '…' : '兑换'}
+          {submitting ? t('topup.redeemSubmitting') : t('topup.redeemSubmit')}
         </button>
       </div>
       {err && (
@@ -172,15 +163,13 @@ function RedeemSection({ onRedeemed }: { onRedeemed: () => void }) {
 }
 
 function TopupSection({ userEmail }: { userEmail: string | null }) {
+  const t = useT()
   const [copied, setCopied] = useState(false)
 
   const copyWechat = async () => {
     try {
       await navigator.clipboard.writeText(DEV_WECHAT)
       setCopied(true)
-      // Revert the button label after a beat so it's obvious the action is
-      // idempotent — the user can copy again if they moved to another app
-      // and came back.
       window.setTimeout(() => setCopied(false), 2000)
     } catch (e) {
       console.warn('[TopupModal] clipboard write failed', e)
@@ -190,9 +179,9 @@ function TopupSection({ userEmail }: { userEmail: string | null }) {
   return (
     <section className="space-y-2">
       <h3 className="text-sm font-semibold flex items-center gap-1.5">
-        <MessageCircle size={14} className="text-accent" /> 充值
+        <MessageCircle size={14} className="text-accent" /> {t('topup.topupHeading')}
       </h3>
-      <p className="text-xs text-dim">充值请添加开发者微信：</p>
+      <p className="text-xs text-dim">{t('topup.topupHint')}</p>
       <div className="flex items-center gap-2">
         <code className="flex-1 min-w-0 px-3 py-2 rounded-lg bg-card border border-border font-mono text-sm text-text truncate select-all">
           {DEV_WECHAT}
@@ -208,24 +197,19 @@ function TopupSection({ userEmail }: { userEmail: string | null }) {
         >
           {copied ? (
             <>
-              <Check size={12} /> 已复制
+              <Check size={12} /> {t('topup.copiedBtn')}
             </>
           ) : (
             <>
-              <Copy size={12} /> 复制
+              <Copy size={12} /> {t('topup.copyBtn')}
             </>
           )}
         </button>
       </div>
       <p className="text-[11px] text-muted leading-relaxed">
-        添加好友时请告知想充值的美元金额与注册邮箱
-        {userEmail && (
-          <>
-            （
-            <span className="text-text font-medium">{userEmail}</span>）
-          </>
-        )}
-        ，按当日汇率折算为人民币微信 / 支付宝转账。管理员将在 24 小时内为你充值。
+        {t('topup.topupNotePre')}
+        {userEmail && t('topup.topupNoteEmail', { email: userEmail })}
+        {t('topup.topupNotePost')}
       </p>
     </section>
   )
@@ -236,17 +220,18 @@ function TransactionsSection({
 }: {
   transactions: BalanceTransaction[]
 }) {
+  const t = useT()
   return (
     <section className="space-y-2">
-      <h3 className="text-sm font-semibold">交易记录</h3>
+      <h3 className="text-sm font-semibold">{t('topup.txHeading')}</h3>
       {transactions.length === 0 ? (
         <div className="text-xs text-muted py-4 text-center bg-card border border-border rounded-lg">
-          暂无记录
+          {t('topup.txEmpty')}
         </div>
       ) : (
         <ul className="divide-y divide-border border border-border rounded-lg overflow-hidden">
-          {transactions.map((t) => (
-            <TransactionRow key={t.id} tx={t} />
+          {transactions.map((tx) => (
+            <TransactionRow key={tx.id} tx={tx} />
           ))}
         </ul>
       )}

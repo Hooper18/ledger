@@ -13,26 +13,28 @@ import {
 } from '../lib/notifications'
 import { useEvents } from '../hooks/useEvents'
 import { useSemester } from '../hooks/useSemester'
+import { useT } from '../i18n'
+import type { TKey } from '../i18n'
 
 interface Props {
   open: boolean
   onClose: () => void
 }
 
-const ADVANCE_OPTIONS: { value: AdvanceMinutes; label: string }[] = [
-  { value: 15, label: '15 分钟' },
-  { value: 30, label: '30 分钟' },
-  { value: 60, label: '1 小时' },
+const ADVANCE_OPTIONS: { value: AdvanceMinutes; labelKey: TKey }[] = [
+  { value: 15, labelKey: 'notifSettings.advance15' },
+  { value: 30, labelKey: 'notifSettings.advance30' },
+  { value: 60, labelKey: 'notifSettings.advance60' },
 ]
 
 export default function NotificationSettingsModal({ open, onClose }: Props) {
   const { semester } = useSemester()
   const { events } = useEvents(semester?.id)
+  const t = useT()
   const [settings, setSettings] = useState<NotificationSettings>(getSettings)
   const [permGranted, setPermGranted] = useState<boolean | null>(null)
   const [busy, setBusy] = useState(false)
 
-  // 模态打开时刷新最新设置 + 权限状态
   useEffect(() => {
     if (!open) return
     setSettings(getSettings())
@@ -50,12 +52,10 @@ export default function NotificationSettingsModal({ open, onClose }: Props) {
     setSettings(next)
     saveSettings(next)
 
-    // 如果切到 enabled 但还没权限，先要权限
     if (next.enabled && native && permGranted !== true) {
       const granted = await requestPermission()
       setPermGranted(granted)
       if (!granted) {
-        // 用户拒了 — 把开关回滚
         const fallback = { ...next, enabled: false }
         setSettings(fallback)
         saveSettings(fallback)
@@ -69,20 +69,20 @@ export default function NotificationSettingsModal({ open, onClose }: Props) {
   }
 
   return (
-    <Modal open={open} title="事件提醒" onClose={onClose} size="md">
+    <Modal open={open} title={t('notifSettings.title')} onClose={onClose} size="md">
       <div className="space-y-4">
         {!native && (
           <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
-            事件提醒只在安装的 Android APP 里生效，浏览器版本无效。
+            {t('notifSettings.nativeOnly')}
             <a href="/apps" className="underline ml-1" target="_blank" rel="noopener">
-              下载 APP
+              {t('notifSettings.downloadApp')}
             </a>
           </div>
         )}
 
         {native && permGranted === false && (
           <div className="rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400">
-            没有通知权限。打开下面的开关时会请求；如果之前拒过，需要去系统设置里手动开启。
+            {t('notifSettings.needPerm')}
           </div>
         )}
 
@@ -90,7 +90,7 @@ export default function NotificationSettingsModal({ open, onClose }: Props) {
           <label className="flex items-center justify-between px-4 py-3 cursor-pointer">
             <span className="flex items-center gap-2 text-sm text-text">
               <Bell size={14} className="text-dim" />
-              开启提醒
+              {t('notifSettings.enable')}
             </span>
             <input
               type="checkbox"
@@ -103,7 +103,7 @@ export default function NotificationSettingsModal({ open, onClose }: Props) {
 
           {settings.enabled && (
             <div className="px-4 py-3 flex items-center justify-between gap-3">
-              <span className="text-sm text-text shrink-0">提前提醒</span>
+              <span className="text-sm text-text shrink-0">{t('notifSettings.advance')}</span>
               <select
                 value={settings.advanceMinutes}
                 disabled={busy || !native}
@@ -114,7 +114,7 @@ export default function NotificationSettingsModal({ open, onClose }: Props) {
               >
                 {ADVANCE_OPTIONS.map((o) => (
                   <option key={o.value} value={o.value}>
-                    {o.label}
+                    {t(o.labelKey)}
                   </option>
                 ))}
               </select>
@@ -123,8 +123,7 @@ export default function NotificationSettingsModal({ open, onClose }: Props) {
         </div>
 
         <div className="text-xs text-dim leading-relaxed px-1">
-          带具体时间的事件会提前 {settings.advanceMinutes} 分钟提醒；
-          全天事件统一在前一天 09:00 提醒。已完成或取消的事件不提醒。
+          {t('notifSettings.explain', { n: settings.advanceMinutes })}
         </div>
       </div>
     </Modal>
