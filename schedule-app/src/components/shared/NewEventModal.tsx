@@ -81,10 +81,11 @@ export default function NewEventModal({
 
   const group = groupOf(type)
 
-  // 每次打开 / 切换类型 / 选中日期变 都重置一次表单为该 type 的智能默认。
-  // 标题保留（用户可能切类型再改），其他字段重置。
+  // 模态打开时把所有字段重置一次（包括标题）。
   useEffect(() => {
     if (!open) return
+    setType('deadline')
+    setTitle('')
     setDate(defaultDate)
     setEndDate(defaultDate)
     setCourseId('')
@@ -93,10 +94,14 @@ export default function NewEventModal({
     setIsGroup(false)
     setErr(null)
     setSaving(false)
+  }, [open, defaultDate])
 
-    // 智能默认按类型组：
+  // 切换类型时只刷新时间字段的智能默认 + 清掉权重/小组（不属于新组就归零），
+  // 标题/备注/课程保留——用户改类型时通常已经在打字、不该被清掉重输。
+  useEffect(() => {
+    if (!open) return
     if (group === 'ddl') {
-      // 截止类：默认 23:59，不全天（你想全天再勾）
+      // 截止类：默认 23:59，不全天
       setAllDay(false)
       setTime('23:59')
       setEndTime('')
@@ -107,14 +112,17 @@ export default function NewEventModal({
       setTime(start)
       setEndTime(addMinutes(start, 60))
     } else {
-      // 跨日类：无时间，默认结束日期 = 开始日期（一天范围）
+      // 跨日类：无时间
       setAllDay(true)
       setTime('')
       setEndTime('')
     }
-    // 切换类型时重置标题免得置换串台（如从「作业 1」切到「驾校学车」很别扭）
-    setTitle('')
-  }, [open, defaultDate, type, group])
+    if (group !== 'ddl') {
+      // 权重/小组只属于截止类
+      setWeight('')
+      setIsGroup(false)
+    }
+  }, [open, group])
 
   // 验证 + 提交
   const submit = async () => {
