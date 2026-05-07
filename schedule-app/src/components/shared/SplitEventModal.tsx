@@ -16,6 +16,7 @@ interface RowDraft {
   title: string
   date: string
   time: string
+  endTime: string
   weight: string
 }
 
@@ -65,12 +66,14 @@ function buildRows(count: number, stem: string, event: Event, t: TFn): RowDraft[
   const perWeight = splitWeight(event.weight, count)
   const dateDefault = event.date ?? ''
   const timeDefault = event.time ? event.time.slice(0, 5) : ''
+  const endTimeDefault = event.end_time ? event.end_time.slice(0, 5) : ''
   const rows: RowDraft[] = []
   for (let i = 0; i < count; i++) {
     rows.push({
       title: `${base} ${i + 1}`,
       date: dateDefault,
       time: timeDefault,
+      endTime: endTimeDefault,
       weight: perWeight,
     })
   }
@@ -116,6 +119,7 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
             title: `${singularize(stem) || t('splitEvent.childPlaceholder')} ${i + 1}`,
             date: event.date ?? '',
             time: event.time ? event.time.slice(0, 5) : '',
+            endTime: event.end_time ? event.end_time.slice(0, 5) : '',
             weight: perWeight,
           })
         }
@@ -150,6 +154,7 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
       type: event.type,
       date: r.date || null,
       time: r.time || null,
+      end_time: r.endTime || null,
       end_date: event.end_date,
       weight: r.weight || null,
       is_group: event.is_group,

@@ -98,6 +98,7 @@ export interface Event {
   type: EventType
   date: string | null
   time: string | null
+  end_time: string | null
   end_date: string | null
   week_number: number | null
   weight: string | null

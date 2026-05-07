@@ -28,6 +28,30 @@ export function formatShortDate(iso: string): string {
   return `${d.getMonth() + 1}/${d.getDate()} ${days[d.getDay()]}`
 }
 
+// 显示事件时间：单点 -> "15:00"，时段 -> "15:00–17:00"，无 -> ""
+// 接受 HH:MM 或 HH:MM:SS 两种存储格式，统一裁到 HH:MM。
+export function formatEventTime(
+  time: string | null | undefined,
+  endTime: string | null | undefined,
+): string {
+  if (!time) return ''
+  const start = time.slice(0, 5)
+  if (!endTime) return start
+  return `${start}–${endTime.slice(0, 5)}`
+}
+
+// 给定 HH:MM，返回加 N 分钟后的 HH:MM。用于"开始时间默认 +1 小时"等
+// 智能默认。跨日（>= 24:00）返回 23:59 防止 wrap。
+export function addMinutes(hhmm: string, mins: number): string {
+  const [h, m] = hhmm.split(':').map(Number)
+  const total = (h || 0) * 60 + (m || 0) + mins
+  if (total >= 24 * 60) return '23:59'
+  if (total < 0) return '00:00'
+  const nh = Math.floor(total / 60)
+  const nm = total % 60
+  return `${String(nh).padStart(2, '0')}:${String(nm).padStart(2, '0')}`
+}
+
 export function getDaysUntil(iso: string | null | undefined): number | null {
   if (!iso) return null
   const target = parseDate(iso)

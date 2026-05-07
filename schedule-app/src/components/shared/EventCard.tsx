@@ -1,6 +1,7 @@
 import { Check, Undo2, Users, Pencil, AlertTriangle, Triangle } from 'lucide-react'
 import type { Event, Course, Semester } from '../../lib/types'
 import {
+  formatEventTime,
   formatShortDate,
   getDaysUntil,
   typeColor,
@@ -105,7 +106,13 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
                     />
                   )}
                 </span>
-                {event.time && <span>{event.time.slice(0, 5)}</span>}
+                {event.time && (
+                  <span>{formatEventTime(event.time, event.end_time)}</span>
+                )}
+                {/* 跨日类（holiday/revision）：显示日期范围 */}
+                {!event.time && event.end_date && event.end_date !== event.date && (
+                  <span>→ {formatShortDate(event.end_date)}</span>
+                )}
                 {wk !== null && <span>{t('eventCard.weekShort', { n: wk })}</span>}
                 {days !== null && !done && (
                   <span

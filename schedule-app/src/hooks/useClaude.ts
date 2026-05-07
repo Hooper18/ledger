@@ -11,6 +11,7 @@ export interface ParsedEvent {
   type: EventType
   date: string | null
   time: string | null
+  end_time?: string | null
   weight: string | null
   is_group: boolean
   notes: string | null

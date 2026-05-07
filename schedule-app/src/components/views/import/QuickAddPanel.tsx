@@ -88,6 +88,7 @@ export default function QuickAddPanel({ semester, courses, onSaved }: Props) {
       type: c.type,
       date: c.date,
       time: c.time,
+      end_time: c.end_time ?? null,
       weight: c.weight,
       is_group: c.is_group,
       notes: c.notes,

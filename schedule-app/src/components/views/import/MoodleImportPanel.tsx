@@ -41,6 +41,7 @@ export interface MoodleEvent {
   type: EventType
   date: string | null
   time: string | null
+  end_time?: string | null
   notes: string | null
   weight?: string | null
   is_group?: boolean
@@ -97,6 +98,7 @@ interface EventRow {
   type: EventType
   date: string | null
   time: string | null
+  end_time: string | null
   weight: string | null
   is_group: boolean
   notes: string | null
@@ -398,6 +400,7 @@ export default function MoodleImportPanel({
           type: e.type,
           date: e.date,
           time: e.time,
+          end_time: e.end_time ?? null,
           notes: e.notes ?? null,
           weight: e.weight ?? null,
           is_group: e.is_group ?? false,
@@ -633,6 +636,7 @@ export default function MoodleImportPanel({
           type: me.type,
           date: me.date,
           time: me.time,
+          end_time: me.end_time ?? null,
           weight: me.weight ?? null,
           is_group: me.is_group ?? false,
           notes: me.notes || null,

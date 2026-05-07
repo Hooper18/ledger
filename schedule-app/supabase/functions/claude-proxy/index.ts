@@ -249,7 +249,16 @@ const recordEventsTool = {
               enum: EVENT_TYPES as unknown as string[],
             },
             date: { type: ["string", "null"] },
-            time: { type: ["string", "null"] },
+            time: {
+              type: ["string", "null"],
+              description:
+                "24h HH:MM. For deadline-class events (deadline/lab_report/video_submission/milestone) this is the due time (e.g. '23:59'). For slot-class events (exam/midterm/quiz/presentation/tutorial/consultation/personal) this is the START time. Null when the source gives no specific time.",
+            },
+            end_time: {
+              type: ["string", "null"],
+              description:
+                "24h HH:MM end time. ONLY set this for slot-class events when the source explicitly mentions a time range (e.g. 'Final Exam 09:00-11:00' → time=09:00, end_time=11:00). Null for deadline-class events, span-class events (holiday/revision), or when only a single time point is given.",
+            },
             weight: { type: ["string", "null"] },
             is_group: { type: "boolean" },
             notes: { type: ["string", "null"] },
@@ -271,6 +280,7 @@ const recordEventsTool = {
             "type",
             "date",
             "time",
+            "end_time",
             "weight",
             "is_group",
             "notes",
