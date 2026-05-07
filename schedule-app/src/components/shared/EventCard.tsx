@@ -36,6 +36,7 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
 
   return (
     <div
+      data-event-id={event.id}
       onClick={clickable ? () => onEdit!(event) : undefined}
       className={`p-3 rounded-xl bg-card border transition-opacity ${
         event.date === null ? 'border-emerald-500/40' : 'border-border'

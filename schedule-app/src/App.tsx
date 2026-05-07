@@ -45,7 +45,8 @@ function Protected({ children }: { children: ReactNode }) {
 }
 
 // 消费通知点击：原生 listener 把 eventId 写到 sessionStorage（main.tsx 启动时注册），
-// 这里在用户登录后读出来，路由到 /todo（先做最小版本，未来可以带 ?event=<id> 高亮具体事件）。
+// 这里在用户登录后读出来，路由到 /todo?event=<id>。
+// TimelineView 读 query 后会自动滚到对应事件并闪 2 秒高亮。
 function NotificationDeepLink() {
   const { user } = useAuth()
   const navigate = useNavigate()
@@ -55,7 +56,7 @@ function NotificationDeepLink() {
       const id = sessionStorage.getItem(PENDING_EVENT_KEY)
       if (id) {
         sessionStorage.removeItem(PENDING_EVENT_KEY)
-        navigate('/todo', { replace: true })
+        navigate(`/todo?event=${encodeURIComponent(id)}`, { replace: true })
       }
     } catch {
       // sessionStorage 不可用则放弃 deep link

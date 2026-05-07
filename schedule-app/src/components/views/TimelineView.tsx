@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ChevronDown, ChevronRight, ChevronsDownUp, ChevronsUpDown, Link2 } from 'lucide-react'
 import { useSemester } from '../../hooks/useSemester'
 import { useCourses } from '../../hooks/useCourses'
@@ -58,6 +59,37 @@ export default function TimelineView() {
       epoch: prev.epoch + 1,
       defaultOpen: !prev.defaultOpen,
     }))
+
+  // Deep link from notification (set by App.tsx NotificationDeepLink after a
+   // user taps a system notification). Once events are loaded, scroll to the
+   // EventCard and flash a 2s outline. Best-effort: if the event is hidden
+   // behind an active filter or a folded course group, we silently skip
+   // rather than rip apart the user's current view state.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const highlightId = searchParams.get('event')
+  useEffect(() => {
+    if (!highlightId || loading) return
+    const t = setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(
+        `[data-event-id="${CSS.escape(highlightId)}"]`,
+      )
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('event-highlight')
+        setTimeout(() => el.classList.remove('event-highlight'), 2200)
+      }
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev)
+          next.delete('event')
+          return next
+        },
+        { replace: true },
+      )
+    }, 120)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [highlightId, loading])
 
   const courseMap = useMemo(
     () => Object.fromEntries(courses.map((c) => [c.id, c])),

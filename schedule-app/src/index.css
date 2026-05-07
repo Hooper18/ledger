@@ -79,3 +79,19 @@ input[type='password']::-ms-reveal,
 input[type='password']::-ms-clear {
   display: none;
 }
+
+/* 通知点击 deep link 高亮（TimelineView）：用 outline 而不是 background，
+   不破坏 EventCard 既有 bg-card / border 样式；2 秒淡出后 outline 透明。 */
+.event-highlight {
+  animation: event-flash 2s ease-out;
+}
+@keyframes event-flash {
+  0% {
+    outline: 2px solid rgba(245, 158, 11, 0.85);
+    outline-offset: 2px;
+  }
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+}

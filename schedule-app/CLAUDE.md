@@ -85,8 +85,9 @@ useEvents.load() → syncNotifications(全量 events)
 ### 通知点击 deep link
 - `setupNotificationClickHandler()` 在 `main.tsx` 启动时注册 `LocalNotifications.addListener('localNotificationActionPerformed')`
 - listener 把 `notification.extra.eventId` 写到 `sessionStorage[PENDING_EVENT_KEY]`
-- `App.tsx:NotificationDeepLink` 在用户登录后读取并 `navigate('/todo')`，清掉 sessionStorage
-- **当前行为**：点通知打开 app 后跳到 todo 列表，**不会高亮具体事件**——未来可扩展为 `/todo?event=<id>` + Timeline 高亮
+- `App.tsx:NotificationDeepLink` 在用户登录后读取并 `navigate('/todo?event=<id>')`，清掉 sessionStorage
+- `TimelineView` 用 `useSearchParams` 读 `event` query → 数据加载后 `scrollIntoView` + 加 `.event-highlight` class（CSS @keyframes 闪 2 秒 outline 后淡出）→ 清 query 防重复
+- **降级行为**：如果事件被当前 filter 隐藏 / 在按课程模式的折叠组里 → 静默跳过（不强制改用户视图状态）；可改进方向是让 ByCourse 的 CourseGroup 接收 highlightId 自动展开命中组
 
 ## 数据缓存策略（`src/lib/dataCache.ts`）
 
@@ -132,9 +133,10 @@ useEvents.load() → syncNotifications(全量 events)
 ## 待办
 
 ### 短期
-- [ ] 通知点击 deep link 升级：`/todo?event=<id>` + Timeline 高亮具体事件（当前只跳到 todo 列表）
+（暂无）
 
 ### 中期
+- [ ] 通知点击 deep link 进一步：按课程模式下命中折叠组时自动展开（当前命中折叠组事件会静默跳过滚动）
 - [ ] Phase 2 导入流程的端到端测试（目前只做过手动验证）
 - [ ] Moodle 抓取的会话续期（cookie 过期需重登）
 
