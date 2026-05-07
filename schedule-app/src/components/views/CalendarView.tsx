@@ -18,12 +18,26 @@ import {
   weekNumber,
 } from '../../lib/utils'
 import { weekLabel } from '../../constants/semester'
+import { useT } from '../../i18n'
+import type { TFn, TKey } from '../../i18n'
 
 type Mode = 'month' | 'week' | 'day'
 
-const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
+const DAY_SHORT_KEYS: TKey[] = [
+  'dayShort.sun',
+  'dayShort.mon',
+  'dayShort.tue',
+  'dayShort.wed',
+  'dayShort.thu',
+  'dayShort.fri',
+  'dayShort.sat',
+]
 
-const MODE_LABELS: Record<Mode, string> = { month: '月', week: '周', day: '日' }
+const MODE_LABEL_KEYS: Record<Mode, TKey> = {
+  month: 'calendar.modeMonth',
+  week: 'calendar.modeWeek',
+  day: 'calendar.modeDay',
+}
 
 // Persist the last-used view mode so re-opening the calendar lands on the
 // same surface (e.g. a user who lives in week view doesn't have to switch
@@ -54,6 +68,7 @@ function ViewSwitcher({
   mode: Mode
   onChange: (m: Mode) => void
 }) {
+  const t = useT()
   return (
     <div className="inline-flex bg-card rounded-full p-1 border border-border">
       {(['month', 'week', 'day'] as const).map((m) => (
@@ -67,7 +82,7 @@ function ViewSwitcher({
               : 'text-dim hover:text-text'
           }`}
         >
-          {MODE_LABELS[m]}
+          {t(MODE_LABEL_KEYS[m])}
         </button>
       ))}
     </div>
@@ -83,6 +98,7 @@ function LayerToggle({
   layers: Layers
   onChange: (l: Layers) => void
 }) {
+  const t = useT()
   const base =
     'px-3 py-1 rounded-full text-xs font-medium border transition-colors'
   const active = 'bg-accent/15 text-accent border-accent/40'
@@ -94,7 +110,7 @@ function LayerToggle({
         onClick={() => onChange({ ...layers, showEvents: !layers.showEvents })}
         className={`${base} ${layers.showEvents ? active : inactive}`}
       >
-        事件
+        {t('calendar.layerEvents')}
       </button>
       <button
         type="button"
@@ -103,7 +119,7 @@ function LayerToggle({
         }
         className={`${base} ${layers.showCourses ? active : inactive}`}
       >
-        课程
+        {t('calendar.layerCourses')}
       </button>
     </div>
   )
@@ -172,6 +188,7 @@ export default function CalendarView() {
   const { semester } = useSemester()
   const { courses, schedule } = useCourses(semester?.id)
   const { events, setStatus, reload } = useEvents(semester?.id)
+  const t = useT()
 
   const [cursor, setCursor] = useState<Date>(startOfMonth(new Date()))
   const [selected, setSelected] = useState<string>(isoOf(new Date()))
@@ -220,7 +237,7 @@ export default function CalendarView() {
   if (!semester) {
     return (
       <div className="p-8 text-center text-dim">
-        <p>尚未创建学期。</p>
+        <p>{t('timeline.noSemester')}</p>
       </div>
     )
   }
@@ -313,7 +330,7 @@ export default function CalendarView() {
             <button
               onClick={() => setCursor((c) => addMonths(c, -1))}
               className="p-1.5 rounded hover:bg-hover text-dim"
-              aria-label="上个月"
+              aria-label={t('calendar.prevMonth')}
             >
               <ChevronLeft size={18} />
             </button>
@@ -323,7 +340,7 @@ export default function CalendarView() {
             <button
               onClick={() => setCursor((c) => addMonths(c, 1))}
               className="p-1.5 rounded hover:bg-hover text-dim"
-              aria-label="下个月"
+              aria-label={t('calendar.nextMonth')}
             >
               <ChevronRight size={18} />
             </button>
@@ -338,7 +355,7 @@ export default function CalendarView() {
               onClick={goToToday}
               className="text-xs font-medium px-3 py-1 rounded-full border border-accent text-accent hover:bg-accent/10 transition-colors"
             >
-              Today
+              {t('calendar.today')}
             </button>
           </div>
         </div>
@@ -361,12 +378,7 @@ export default function CalendarView() {
         />
       </div>
 
-      {/* Mobile-only: bottom drawer for the selected day. Mobile cells are
-          tiny dots-only — without this drawer, the user can see "this day has
-          events" but not what they are. Renders events (tappable → EventModal)
-          and courses for the selected day, gated by the layer toggles.
-          pb-36 leaves room for BottomNav (h-16) + safe-area so the last
-          card isn't occluded by the nav bar. */}
+      {/* Mobile-only: bottom drawer for the selected day. */}
       {((layers.showEvents && selectedEvents.length > 0) ||
         (layers.showCourses && daySchedule.length > 0)) && (
         // overscroll-contain prevents reach-boundary gestures from bubbling
@@ -375,7 +387,7 @@ export default function CalendarView() {
           {layers.showEvents && selectedEvents.length > 0 && (
             <section>
               <h3 className="text-xs font-semibold tracking-wider text-muted uppercase mb-2">
-                事件 ({selectedEvents.length})
+                {t('calendar.eventsHeading', { n: selectedEvents.length })}
               </h3>
               <div className="space-y-2">
                 {selectedEvents.map((e) => (
@@ -422,16 +434,14 @@ export default function CalendarView() {
         onSaved={reload}
       />
 
-      {/* 移动端浮动添加按钮 —— 桌面端有 DayDetailPanel 提供添加入口，
-          mobile 没有，所以只在 md 以下显示。bottom-20 给 BottomNav (h-14)
-          + safe area 留出空间。 */}
+      {/* Mobile floating "add" button — desktop has DayDetailPanel as the entry point. */}
       {semester && (
         <button
           type="button"
           onClick={() => setAdding(true)}
           disabled={guard.disabled}
           title={guard.title}
-          aria-label="新建事件"
+          aria-label={t('calendar.newEvent')}
           className="md:hidden fixed bottom-20 right-4 z-30 w-14 h-14 rounded-full bg-accent text-white flex items-center justify-center shadow-lg active:scale-95 transition-transform disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus size={24} />
@@ -500,6 +510,7 @@ function MonthGrid({
   layers,
   onSelect,
 }: MonthProps) {
+  const t = useT()
   const todayIso = isoOf(new Date())
   const rows: Date[][] = []
   for (let i = 0; i < 6; i++) rows.push(grid.slice(i * 7, i * 7 + 7))
@@ -508,9 +519,9 @@ function MonthGrid({
     <div className="p-1 md:p-2">
       <div className="grid grid-cols-7 md:grid-cols-[36px_repeat(7,1fr)] text-center text-[11px] font-semibold text-muted py-0.5 md:py-2">
         <div className="hidden md:block" />
-        {WEEKDAYS.map((w, i) => (
-          <div key={w} className={i === 0 ? 'text-red-500' : ''}>
-            {w}
+        {DAY_SHORT_KEYS.map((k, i) => (
+          <div key={k} className={i === 0 ? 'text-red-500' : ''}>
+            {t(k)}
           </div>
         ))}
       </div>
@@ -568,6 +579,7 @@ function Cell({
   layers,
   onSelect,
 }: CellProps) {
+  const t = useT()
   const iso = isoOf(d)
   const inMonth = d.getMonth() === cursor.getMonth()
   const isToday = iso === todayIso
@@ -634,13 +646,6 @@ function Cell({
         >
           {d.getDate()}
         </span>
-        {/* Right side of the date row holds two compact indicators:
-            (a) mobile-only event dots — previously lived in a separate
-                `mt-auto pb-0.5` row at the bottom of the 48px cell, which
-                meant 4px dots hugging the border and easily missed. Moving
-                them up to the date row (same slot as the course count)
-                makes the "has events" signal legible at a glance.
-            (b) course count label ("N节"). */}
         {inMonth && (dots.length > 0 || daySessions.length > 0) && (
           <div className="flex items-center gap-0.5 md:gap-1">
             {dots.length > 0 && (
@@ -657,9 +662,9 @@ function Cell({
             {daySessions.length > 0 && (
               <span
                 className="text-[8px] md:text-[10px] text-dim font-mono leading-none font-medium"
-                title={`${daySessions.length} 节课`}
+                title={t('calendar.sessionsCountTitle', { n: daySessions.length })}
               >
-                {daySessions.length}节
+                {t('calendar.sessionsCount', { n: daySessions.length })}
               </span>
             )}
           </div>
@@ -707,6 +712,16 @@ interface DayProps {
   onNextDay: () => void
 }
 
+function dayHeading(d: Date, t: TFn): string {
+  const day = t(DAY_SHORT_KEYS[d.getDay()])
+  return t('calendar.dayHeading', {
+    y: d.getFullYear(),
+    m: String(d.getMonth() + 1).padStart(2, '0'),
+    d: String(d.getDate()).padStart(2, '0'),
+    day,
+  })
+}
+
 function DayView({
   date,
   events,
@@ -719,11 +734,10 @@ function DayView({
   onPrevDay,
   onNextDay,
 }: DayProps) {
+  const t = useT()
   const d = parseDate(date)
   const wk = weekNumber(date, semester)
-  const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-    d.getDate(),
-  ).padStart(2, '0')} ${['日', '一', '二', '三', '四', '五', '六'][d.getDay()]}`
+  const label = dayHeading(d, t)
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -732,7 +746,9 @@ function DayView({
         </button>
         <div className="text-center">
           <div className="font-semibold text-text">{label}</div>
-          {wk !== null && <div className="text-xs text-dim">Week {wk}</div>}
+          {wk !== null && (
+            <div className="text-xs text-dim">{t('calendar.weekLabel', { n: wk })}</div>
+          )}
         </div>
         <button onClick={onNextDay} className="p-1.5 rounded hover:bg-hover text-dim">
           <ChevronRight size={18} />
@@ -742,11 +758,11 @@ function DayView({
       {layers.showEvents && (
         <section>
           <h3 className="text-xs font-semibold tracking-wider text-muted uppercase mb-2">
-            Events ({events.length})
+            {t('calendar.eventsHeading', { n: events.length })}
           </h3>
           {events.length === 0 ? (
             <div className="text-sm text-dim py-4 text-center bg-card rounded-lg border border-border">
-              今日无事件
+              {t('calendar.noEventsToday')}
             </div>
           ) : (
             <div className="space-y-2">
@@ -784,6 +800,7 @@ export function DayCourseList({
   schedule: WeeklySchedule[]
   courseMap: Record<string, Course>
 }) {
+  const t = useT()
   // Re-render every minute so "next class" stays accurate as time advances.
   const [, setNowTick] = useState(0)
   useEffect(() => {
@@ -798,12 +815,12 @@ export function DayCourseList({
   return (
     <section>
       <h3 className="text-xs font-semibold tracking-wider text-muted uppercase mb-2">
-        课程时间表
+        {t('calendar.classScheduleHeading')}
       </h3>
       {isToday && nextSession && nextCourse && (
         <div className="mb-2 rounded-lg border border-accent/40 bg-accent/10 p-2.5 flex items-center gap-2">
           <span className="text-[10px] font-semibold text-accent bg-accent/15 px-1.5 py-0.5 rounded shrink-0">
-            下一节
+            {t('calendar.nextSessionBadge')}
           </span>
           <span className="flex-1 min-w-0 text-sm text-text truncate">
             <span className="font-semibold font-mono">{nextCourse.code}</span>{' '}
@@ -819,7 +836,7 @@ export function DayCourseList({
       )}
       {schedule.length === 0 ? (
         <div className="text-sm text-dim py-4 text-center bg-card rounded-lg border border-border">
-          今日无课
+          {t('home.noClassesToday')}
         </div>
       ) : (
         <div className="relative bg-card rounded-lg border border-border">
@@ -843,7 +860,7 @@ export function DayCourseList({
                 />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-text truncate">
-                    {c ? `${c.code} ${c.name}` : '未知课程'}
+                    {c ? `${c.code} ${c.name}` : t('home.unknownCourse')}
                   </div>
                   <div className="text-xs text-dim flex items-center gap-1 flex-wrap font-medium">
                     <span>{s.type}</span>
@@ -899,14 +916,10 @@ function WeekView({
   onModeChange,
   onSelectDate,
 }: WeekViewProps) {
+  const t = useT()
   const isDesktop = useIsDesktop()
-  // Mobile packs hours tighter so the day fits in one screen with minimal
-  // vertical scroll; desktop keeps the roomier default.
   const HOUR_PX_WEEK = isDesktop ? 56 : 40
   const AXIS_WIDTH = isDesktop ? 56 : 36
-  // Mobile: enforce a per-column minimum so course names/locations stay
-  // legible and the grid becomes horizontally scrollable. Desktop fills the
-  // available width (min 0) like before.
   const COLUMN_MIN = isDesktop ? 0 : 82
   const gridTemplate = `${AXIS_WIDTH}px repeat(7, minmax(${COLUMN_MIN}px, 1fr))`
   const [now, setNow] = useState(() => new Date())
@@ -936,9 +949,6 @@ function WeekView({
     return arr
   }, [weekStart])
 
-  // Compute start / end hours from the full schedule so the grid is always
-  // tall enough for any recurring session, not just this week's. Default
-  // range is 08:00–20:00 because XMUM has evening classes running up to 20:00.
   const { startMin, endMin } = useMemo(() => {
     let s = 8 * 60
     let e = 20 * 60
@@ -975,30 +985,20 @@ function WeekView({
     const e = weekDays[6]
     const fmt = (x: Date) =>
       `${String(x.getMonth() + 1).padStart(2, '0')}/${String(x.getDate()).padStart(2, '0')}`
-    return `${fmt(s)} – ${fmt(e)}`
+    return t('calendar.weekRange', { start: fmt(s), end: fmt(e) })
   })()
   const wk = weekNumber(isoOf(weekStart), semester)
 
   return (
-    // Height chain (必须每一级都有确切高度，否则 flex-1 min-h-0 的滚动
-    // 容器会 fallback 到内容高度、不触发 overflow-auto 的垂直滚动):
-    //   Layout 根 `h-dvh`
-    //   → main `flex-1 min-h-0 overflow-hidden`（flex-row 子）
-    //   → CalendarView 外层 `h-full flex flex-col overflow-hidden`
-    //   → WeekView 自身 `h-full flex flex-col overflow-hidden`（本行）
-    //   → 滚动容器 `flex-1 min-h-0 overflow-auto`
-    // 这里显式 `h-full` 而不是 `flex-1`，让 WeekView 的高度不依赖父层
-    // 是否恰好是 flex-col —— 更稳。
     <div className="h-full flex flex-col overflow-hidden">
-      {/* Row 1: Week nav (date range / prev-next / 本周). First per design —
-          the primary context shift lives above the view-mode switcher. */}
+      {/* Row 1: Week nav (date range / prev-next / 本周). */}
       <div className="px-4 py-2 flex items-center justify-between border-b border-border shrink-0">
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => shiftWeek(-1)}
             className="p-1.5 rounded hover:bg-hover text-dim"
-            aria-label="上一周"
+            aria-label={t('calendar.prevWeek')}
           >
             <ChevronLeft size={16} />
           </button>
@@ -1006,7 +1006,7 @@ function WeekView({
             {weekLabelStr}
             {wk !== null && (
               <span className="ml-1 text-[10px] text-dim font-normal">
-                · 第{wk}周
+                · {t('calendar.weekNumberShort', { n: wk })}
               </span>
             )}
           </div>
@@ -1014,7 +1014,7 @@ function WeekView({
             type="button"
             onClick={() => shiftWeek(1)}
             className="p-1.5 rounded hover:bg-hover text-dim"
-            aria-label="下一周"
+            aria-label={t('calendar.nextWeek')}
           >
             <ChevronRight size={16} />
           </button>
@@ -1024,34 +1024,19 @@ function WeekView({
           onClick={() => onCursorChange(new Date())}
           className="text-xs font-medium px-3 py-1 rounded-full border border-accent text-accent hover:bg-accent/10 transition-colors"
         >
-          本周
+          {t('calendar.thisWeek')}
         </button>
       </div>
 
-      {/* Row 2: view-mode switcher + event/course layer toggles. Owned by
-          WeekView (not the outer CalendarView) so they sit below the week
-          nav only for this view. */}
+      {/* Row 2: view-mode switcher + event/course layer toggles. */}
       <div className="p-2 md:p-3 border-b border-border flex flex-row flex-wrap items-center justify-center gap-2 shrink-0">
         <ViewSwitcher mode={mode} onChange={onModeChange} />
         <LayerToggle layers={layers} onChange={onLayersChange} />
       </div>
 
-      {/* Single scroll container for both axes. Previous attempt nested two
-          scroll containers (outer overflow-x, inner overflow-y) so the pill
-          strip could live in a "fixed" area above the vertical scroll —
-          but the inner container's implicit overflow-x:auto swallowed
-          horizontal pans instead of letting them bubble to the outer one,
-          which silently killed horizontal scroll on mobile.
-          Simpler: one scroll box with overflow-auto; pill is `sticky top-0`
-          so it visually pins to the top when scrolling vertically, and
-          pans horizontally with the grid because they share this same
-          scroll container AND the same gridTemplateColumns. Rows 1 and 2
-          above are still shrink-0 and never move. */}
+      {/* Single scroll container for both axes. */}
       <div className="flex-1 min-h-0 overflow-auto overscroll-contain pb-24 md:pb-6">
-          {/* Row 3: Mobile pill day strip — sticky top-0 pins vertically;
-              horizontal pan follows the grid because they live in the same
-              scrolling container. Shares gridTemplateColumns with the grid
-              below so each pill sits directly above its column. */}
+          {/* Row 3: Mobile pill day strip. */}
           <div
             className="md:hidden sticky top-0 z-30 bg-main border-b border-border px-1 py-1.5 grid"
             style={{ gridTemplateColumns: gridTemplate }}
@@ -1073,7 +1058,7 @@ function WeekView({
                     isToday ? 'text-accent' : 'text-dim'
                   }`}
                 >
-                  周{['日', '一', '二', '三', '四', '五', '六'][day.getDay()]}
+                  {t(DAY_SHORT_KEYS[day.getDay()])}
                 </span>
                 <span
                   className={`mt-1 w-7 h-7 flex items-center justify-center rounded-full text-sm font-bold leading-none ${
@@ -1096,8 +1081,7 @@ function WeekView({
               className="grid md:min-w-[800px]"
               style={{ gridTemplateColumns: gridTemplate }}
             >
-              {/* Desktop-only header row (8 cells). Hidden on mobile so the pill
-                  strip above acts as the column labels instead. */}
+              {/* Desktop-only header row (8 cells). */}
           <div className="hidden md:block sticky top-0 z-20 bg-main border-b border-border" />
           {weekDays.map((day) => {
             const iso = isoOf(day)
@@ -1112,12 +1096,7 @@ function WeekView({
                   isToday ? 'text-accent font-semibold' : 'text-dim'
                 }`}
               >
-                <div>
-                  周{['日', '一', '二', '三', '四', '五', '六'][day.getDay()]}
-                </div>
-                {/* Today marker is a small filled circle around the date
-                    number, matching the month view's convention. No more
-                    full-column tint — that read as heavy-handed. */}
+                <div>{t(DAY_SHORT_KEYS[day.getDay()])}</div>
                 <div
                   className={`font-mono text-[11px] ${
                     isToday
@@ -1177,9 +1156,6 @@ function WeekView({
             return (
               <div
                 key={iso}
-                // No column-wide tint for today — the header pill & red now
-                // line already mark it. A column tint looks heavy with many
-                // courses stacked.
                 className="relative border-r border-border last:border-r-0"
                 style={{ height: `${gridHeight}px` }}
               >
@@ -1228,12 +1204,6 @@ function WeekView({
                       }}
                       title={`${c.code} ${c.name}\n${s.start_time.slice(0, 5)}–${s.end_time.slice(0, 5)}${s.location ? '\n' + s.location : ''}`}
                     >
-                      {/* Priority: name → location → code. Time is omitted
-                          because the axis already shows it. The colored left
-                          stripe + bg tint carry the per-course identity so
-                          the code line can be deprioritised. `line-clamp-2`
-                          lets long names like "Engineering Physics (I)" wrap
-                          to two lines instead of being chopped off. */}
                       <div
                         className="text-[10px] md:text-[11px] font-bold line-clamp-2 leading-tight"
                         style={{ color: c.color }}

@@ -12,6 +12,8 @@ import { getDaysUntil, isoOf, parseDate, todayISO, weekNumber } from '../../lib/
 import { computeCurrentAndNext } from '../../lib/sessionUtils'
 import EventCard from '../shared/EventCard'
 import { CurrentClassCard, NextClassCard } from '../shared/ClassStatusCards'
+import { useT } from '../../i18n'
+import type { TKey } from '../../i18n'
 
 interface Props {
   selectedDate: string
@@ -24,6 +26,16 @@ interface Props {
   onEdit: (e: Event) => void
   onSelectDate?: (iso: string) => void
 }
+
+const DAY_LONG_KEYS: TKey[] = [
+  'dayLong.sun',
+  'dayLong.mon',
+  'dayLong.tue',
+  'dayLong.wed',
+  'dayLong.thu',
+  'dayLong.fri',
+  'dayLong.sat',
+]
 
 // Desktop-only right rail: selected-day events → selected-day classes →
 // upcoming events list.
@@ -38,6 +50,7 @@ export default function DayDetailPanel({
   onEdit,
   onSelectDate,
 }: Props) {
+  const t = useT()
   // Re-render every minute so "next class" highlight stays accurate.
   const [, setNowTick] = useState(0)
   useEffect(() => {
@@ -66,8 +79,12 @@ export default function DayDetailPanel({
 
   const wk = weekNumber(selectedDate, semester)
   const d = parseDate(selectedDate)
-  const wd = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][d.getDay()]
-  const headerLabel = `${d.getMonth() + 1}月${d.getDate()}日 ${wd}`
+  const wd = t(DAY_LONG_KEYS[d.getDay()])
+  const headerLabel = t('dayDetail.headerLabel', {
+    m: d.getMonth() + 1,
+    d: d.getDate(),
+    day: wd,
+  })
 
   const daySchedule = scheduleByDay.get(d.getDay()) ?? []
   const isToday = selectedDate === isoOf(new Date())
@@ -101,13 +118,15 @@ export default function DayDetailPanel({
               {headerLabel}
             </h3>
             {wk !== null && (
-              <span className="text-[11px] text-dim shrink-0">Week {wk}</span>
+              <span className="text-[11px] text-dim shrink-0">
+                {t('eventCard.weekShort', { n: wk })}
+              </span>
             )}
           </div>
           {layers.showEvents &&
             (selectedDayEvents.length === 0 ? (
               <div className="text-xs text-dim py-6 text-center bg-card rounded-lg border border-border">
-                今日暂无事件
+                {t('dayDetail.noEventsToday')}
               </div>
             ) : (
               <div className="space-y-2">
@@ -131,7 +150,7 @@ export default function DayDetailPanel({
             <div className="border-t border-border" />
             <section className="space-y-2">
               <h3 className="text-xs font-semibold tracking-wider text-muted uppercase">
-                今日课程
+                {t('home.todayClasses')}
               </h3>
               {isToday && (
                 <div className="space-y-2">
@@ -146,7 +165,7 @@ export default function DayDetailPanel({
                       classes are all done but a later day still has one. */}
                   {!currentSession && nextOffset > 0 && daySchedule.length > 0 && (
                     <div className="text-[10px] text-dim px-1">
-                      今日课程已结束
+                      {t('dayDetail.todayClassesEnded')}
                     </div>
                   )}
                   {nextSession && (
@@ -161,7 +180,7 @@ export default function DayDetailPanel({
               )}
               {daySchedule.length === 0 ? (
                 <div className="text-xs text-dim py-4 text-center bg-card rounded-lg border border-border">
-                  今日无课
+                  {t('home.noClassesToday')}
                 </div>
               ) : (
                 <ul className="space-y-1.5">
@@ -184,7 +203,7 @@ export default function DayDetailPanel({
                             {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}
                           </div>
                           <div className="text-xs font-medium text-text truncate">
-                            {c ? `${c.code} ${c.name}` : '未知课程'}
+                            {c ? `${c.code} ${c.name}` : t('home.unknownCourse')}
                           </div>
                           {s.location && (
                             <div className="text-[10px] text-dim flex items-center gap-0.5">
@@ -208,20 +227,27 @@ export default function DayDetailPanel({
         <section className="space-y-2">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold tracking-wider text-muted uppercase">
-              即将到来
+              {t('dayDetail.upcoming')}
             </h3>
             {upcoming.length > 0 && (
               <span className="text-[10px] text-muted">{upcoming.length}</span>
             )}
           </div>
           {upcoming.length === 0 ? (
-            <div className="text-xs text-dim py-4 text-center">暂无计划</div>
+            <div className="text-xs text-dim py-4 text-center">
+              {t('dayDetail.noPlanned')}
+            </div>
           ) : (
             <ul className="space-y-1.5">
               {upcoming.map((e) => {
                 const course = e.course_id ? courseMap[e.course_id] : null
                 const days = getDaysUntil(e.date)
-                const daysLabel = days === null ? '' : days === 0 ? '今天' : `${days}d`
+                const daysLabel =
+                  days === null
+                    ? ''
+                    : days === 0
+                      ? t('home.dayToday')
+                      : t('dayDetail.daysShort', { n: days })
                 return (
                   <li key={e.id}>
                     <button

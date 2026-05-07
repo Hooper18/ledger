@@ -8,6 +8,7 @@ import {
   weekNumber,
 } from '../../lib/utils'
 import { useMutationGuard } from '../../hooks/useMutationGuard'
+import { useT } from '../../i18n'
 
 interface Props {
   event: Event
@@ -19,6 +20,7 @@ interface Props {
 
 export default function EventCard({ event, course, semester, onToggle, onEdit }: Props) {
   const guard = useMutationGuard()
+  const t = useT()
   const done = event.status === 'completed'
   const days = getDaysUntil(event.date)
   const wk = event.week_number ?? (event.date ? weekNumber(event.date, semester) : null)
@@ -27,10 +29,10 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
     days === null
       ? ''
       : days === 0
-        ? 'Today'
+        ? t('eventCard.today')
         : days > 0
-          ? `${days}d`
-          : `${-days}d ago`
+          ? t('eventCard.daysAfter', { n: days })
+          : t('eventCard.daysAgo', { n: -days })
 
   const clickable = !!onEdit
 
@@ -51,7 +53,7 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
           }}
           disabled={guard.disabled}
           title={guard.title}
-          aria-label={done ? '标记未完成' : '标记完成'}
+          aria-label={done ? t('eventCard.markNotDone') : t('eventCard.markDone')}
           className={`mt-0.5 w-5 h-5 shrink-0 rounded-full border-2 flex items-center justify-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
             done
               ? 'bg-accent border-accent text-white'
@@ -99,12 +101,12 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
                     <AlertTriangle
                       size={10}
                       className="text-amber-500"
-                      aria-label="日期为推断值"
+                      aria-label={t('eventCard.inferredDate')}
                     />
                   )}
                 </span>
                 {event.time && <span>{event.time.slice(0, 5)}</span>}
-                {wk !== null && <span>Week {wk}</span>}
+                {wk !== null && <span>{t('eventCard.weekShort', { n: wk })}</span>}
                 {days !== null && !done && (
                   <span
                     className={
@@ -121,8 +123,8 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
               </>
             ) : (
               <span className="inline-flex items-center gap-0.5 text-emerald-500 font-medium">
-                <Triangle size={10} aria-label="待定日期" />
-                待定
+                <Triangle size={10} aria-label={t('eventCard.undatedAria')} />
+                {t('eventCard.undated')}
               </span>
             )}
           </div>
@@ -131,7 +133,7 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
             <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-600">
               <AlertTriangle size={9} className="shrink-0" />
               <span>
-                日期推断自 "<span className="italic">{event.date_source}</span>"，请核对
+                {t('eventCard.inferredFrom', { source: event.date_source })}
               </span>
             </div>
           )}
@@ -149,7 +151,7 @@ export default function EventCard({ event, course, semester, onToggle, onEdit }:
               }}
               disabled={guard.disabled}
               title={guard.title}
-              aria-label="撤销完成"
+              aria-label={t('eventCard.undoDone')}
               className="p-1.5 rounded hover:bg-hover text-muted disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Undo2 size={14} />

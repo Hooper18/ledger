@@ -9,6 +9,8 @@ import EventModal from '../shared/EventModal'
 import FilterBar from '../shared/FilterBar'
 import ReassignCourseModal from '../ReassignCourseModal'
 import type { Course, Event, EventType } from '../../lib/types'
+import { useT } from '../../i18n'
+import type { TKey } from '../../i18n'
 
 // Matches course codes like COM104, BSC124, MPU3312, ECS301A.
 const COURSE_CODE_RE = /\b[A-Z]{2,4}\d{3,}[A-Z]?\b/
@@ -24,20 +26,21 @@ function extractCourseCode(e: Event): string | null {
 type Filter = 'all' | EventType | 'ddl_group'
 type GroupMode = 'time' | 'course'
 
-const FILTERS: { value: Filter; label: string; types: EventType[] | null }[] = [
-  { value: 'all', label: 'All', types: null },
-  { value: 'exam', label: 'Exam', types: ['exam', 'midterm'] },
-  { value: 'quiz', label: 'Quiz', types: ['quiz'] },
-  { value: 'ddl_group', label: 'DDL', types: ['deadline', 'presentation'] },
-  { value: 'lab_report', label: 'Lab', types: ['lab_report'] },
-  { value: 'video_submission', label: 'Video', types: ['video_submission'] },
-  { value: 'holiday', label: 'Holiday', types: ['holiday', 'revision'] },
+const FILTERS: { value: Filter; labelKey: TKey; types: EventType[] | null }[] = [
+  { value: 'all', labelKey: 'filters.all', types: null },
+  { value: 'exam', labelKey: 'filters.exam', types: ['exam', 'midterm'] },
+  { value: 'quiz', labelKey: 'filters.quiz', types: ['quiz'] },
+  { value: 'ddl_group', labelKey: 'filters.ddl', types: ['deadline', 'presentation'] },
+  { value: 'lab_report', labelKey: 'filters.lab', types: ['lab_report'] },
+  { value: 'video_submission', labelKey: 'filters.video', types: ['video_submission'] },
+  { value: 'holiday', labelKey: 'filters.holiday', types: ['holiday', 'revision'] },
 ]
 
 export default function TimelineView() {
   const { semester } = useSemester()
   const { courses } = useCourses(semester?.id)
   const { events, loading, setStatus, reload } = useEvents(semester?.id)
+  const t = useT()
   const [filter, setFilter] = useState<Filter>('all')
   const [showDone, setShowDone] = useState(false)
   const [editing, setEditing] = useState<Event | null>(null)
@@ -69,7 +72,7 @@ export default function TimelineView() {
   const highlightId = searchParams.get('event')
   useEffect(() => {
     if (!highlightId || loading) return
-    const t = setTimeout(() => {
+    const tm = setTimeout(() => {
       const el = document.querySelector<HTMLElement>(
         `[data-event-id="${CSS.escape(highlightId)}"]`,
       )
@@ -87,7 +90,7 @@ export default function TimelineView() {
         { replace: true },
       )
     }, 120)
-    return () => clearTimeout(t)
+    return () => clearTimeout(tm)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [highlightId, loading])
 
@@ -117,13 +120,13 @@ export default function TimelineView() {
   if (!semester) {
     return (
       <div className="p-8 text-center text-dim">
-        <p>尚未创建学期。</p>
-        <p className="text-sm mt-2">请先到 Supabase 添加一条 semesters 记录。</p>
+        <p>{t('timeline.noSemester')}</p>
+        <p className="text-sm mt-2">{t('timeline.noSemesterHint')}</p>
       </div>
     )
   }
 
-  if (loading) return <div className="p-8 text-center text-dim">加载中…</div>
+  if (loading) return <div className="p-8 text-center text-dim">{t('common.loading')}</div>
 
   return (
     <>
@@ -139,7 +142,7 @@ export default function TimelineView() {
                 : 'text-dim hover:text-text'
             }`}
           >
-            按时间
+            {t('timeline.groupByTime')}
           </button>
           <button
             type="button"
@@ -150,7 +153,7 @@ export default function TimelineView() {
                 : 'text-dim hover:text-text'
             }`}
           >
-            按课程
+            {t('timeline.groupByCourse')}
           </button>
         </div>
       </div>
@@ -158,13 +161,13 @@ export default function TimelineView() {
       <FilterBar
         value={filter}
         onChange={setFilter}
-        options={FILTERS.map((f) => ({ value: f.value, label: f.label }))}
+        options={FILTERS.map((f) => ({ value: f.value, label: t(f.labelKey) }))}
       />
 
       <div className="p-4 space-y-3">
         <div className="flex items-center justify-between gap-3 text-xs text-dim">
           <div className="shrink-0">
-            {semester.code} · {filtered.length} events
+            {t('timeline.eventsCount', { semester: semester.code, n: filtered.length })}
           </div>
           <div className="flex items-center gap-3">
             {groupMode === 'course' && (
@@ -172,17 +175,21 @@ export default function TimelineView() {
                 type="button"
                 onClick={toggleAllGroups}
                 className="flex items-center gap-1 text-dim hover:text-text transition-colors"
-                title={groupBroadcast.defaultOpen ? '全部收起' : '全部展开'}
+                title={
+                  groupBroadcast.defaultOpen
+                    ? t('timeline.collapseAll')
+                    : t('timeline.expandAll')
+                }
               >
                 {groupBroadcast.defaultOpen ? (
                   <>
                     <ChevronsDownUp size={13} />
-                    <span>全部收起</span>
+                    <span>{t('timeline.collapseAll')}</span>
                   </>
                 ) : (
                   <>
                     <ChevronsUpDown size={13} />
-                    <span>全部展开</span>
+                    <span>{t('timeline.expandAll')}</span>
                   </>
                 )}
               </button>
@@ -194,7 +201,7 @@ export default function TimelineView() {
                 onChange={(e) => setShowDone(e.target.checked)}
                 className="accent-accent"
               />
-              显示已完成
+              {t('timeline.showCompleted')}
             </label>
           </div>
         </div>
@@ -252,15 +259,16 @@ interface ByTimeProps {
 }
 
 function ByTime({ tbd, dated, courseMap, semester, onToggle, onEdit }: ByTimeProps) {
+  const t = useT()
   if (tbd.length === 0 && dated.length === 0) {
-    return <div className="py-16 text-center text-dim">没有事件</div>
+    return <div className="py-16 text-center text-dim">{t('timeline.noEvents')}</div>
   }
   return (
     <>
       {tbd.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-xs font-semibold tracking-wider text-emerald-500">
-            📋 待定日期 · {tbd.length} 条
+            {t('timeline.tbdHeading', { n: tbd.length })}
           </h2>
           <div className="space-y-2">
             {tbd.map((e) => (
@@ -280,7 +288,7 @@ function ByTime({ tbd, dated, courseMap, semester, onToggle, onEdit }: ByTimePro
       {dated.length > 0 && (
         <section className="space-y-2">
           <h2 className="text-xs font-semibold tracking-wider text-muted uppercase">
-            Upcoming ({dated.length})
+            {t('timeline.upcomingHeading', { n: dated.length })}
           </h2>
           <div className="space-y-2">
             {dated.map((e) => (
@@ -319,6 +327,7 @@ function ByCourse({
   onReassign,
   groupBroadcast,
 }: ByCourseProps) {
+  const t = useT()
   // Group by course_id; sort within each group by date (tbd last), and courses
   // by their original sort_order (preserved from the courses query).
   const { byCourse, noCourse } = useMemo(() => {
@@ -371,7 +380,7 @@ function ByCourse({
   const orderedCourses = courses
 
   if (events.length === 0 && orderedCourses.length === 0) {
-    return <div className="py-16 text-center text-dim">没有事件</div>
+    return <div className="py-16 text-center text-dim">{t('timeline.noEvents')}</div>
   }
 
   return (
@@ -408,17 +417,17 @@ function ByCourse({
               aria-hidden
             />
             <span className="flex-1 min-w-0 text-sm font-medium text-text truncate">
-              其他（无课程）
+              {t('timeline.otherCourses')}
             </span>
             <span className="shrink-0 text-xs text-dim">
-              {noCourse.length} 条
+              {t('timeline.rowCount', { n: noCourse.length })}
             </span>
           </div>
           <div className="p-3 space-y-3">
             {noCourseSubgroups.map(([code, evs]) => {
               const hint = code === '__unknown__' ? null : code
               const label =
-                code === '__unknown__' ? '课程代码未识别' : code
+                code === '__unknown__' ? t('timeline.unknownCode') : code
               return (
                 <div
                   key={code}
@@ -429,7 +438,7 @@ function ByCourse({
                       {label}
                     </span>
                     <span className="text-[11px] text-dim shrink-0">
-                      {evs.length} 条
+                      {t('timeline.rowCount', { n: evs.length })}
                     </span>
                     <button
                       type="button"
@@ -442,7 +451,7 @@ function ByCourse({
                       className="shrink-0 inline-flex items-center gap-1 text-xs text-accent hover:bg-accent/10 rounded-md px-2 py-1 transition-colors"
                     >
                       <Link2 size={12} />
-                      关联到课程
+                      {t('timeline.linkToCourse')}
                     </button>
                   </div>
                   <div className="p-2 space-y-2">
@@ -489,6 +498,7 @@ function CourseGroup({
   onReassign,
   broadcast,
 }: CourseGroupProps) {
+  const t = useT()
   const [open, setOpen] = useState(broadcast.defaultOpen)
   // React to "expand/collapse all" broadcasts. Ignore `defaultOpen` change
   // alone — only an epoch bump means the user clicked the global toggle, so
@@ -521,15 +531,18 @@ function CourseGroup({
             {title}
           </span>
           <span className="shrink-0 text-xs text-dim">
-            {pending > 0 ? `${pending} 待办` : '全部完成'} · {events.length}
+            {pending > 0
+              ? t('timeline.pendingCount', { n: pending })
+              : t('timeline.allDone')}{' '}
+            · {events.length}
           </span>
         </button>
         <button
           type="button"
           onClick={onReassign}
           className="shrink-0 p-1.5 rounded-md text-dim hover:text-accent hover:bg-accent/10 transition-colors"
-          title="批量关联到其他课程"
-          aria-label="批量关联到其他课程"
+          title={t('timeline.bulkReassign')}
+          aria-label={t('timeline.bulkReassign')}
         >
           <Link2 size={14} />
         </button>
@@ -538,7 +551,7 @@ function CourseGroup({
         <div className="p-3 pt-0 space-y-2 border-t border-border">
           {events.length === 0 ? (
             <div className="py-6 text-center text-xs text-dim">
-              暂无待办
+              {t('timeline.noTodo')}
             </div>
           ) : (
             events.map((e) => (
