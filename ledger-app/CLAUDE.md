@@ -89,14 +89,10 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
 - `src/lib/lastSync.ts`：每表最后同步时间。
 
 ## 部署
-- Vercel：https://ledger-tusts.vercel.app
+- 主入口：https://ledger.tuchenguang.com（Vercel 默认 URL `ledger-tusts.vercel.app` 仍可访问）
 - `vercel.json`：SPA 重写 + sw.js no-cache + assets 长缓存
 - 环境变量：`VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`
-
-## 待办（依赖外部）
-- [ ] Resend 验证域名 pocketledger.top（依赖阿里云实名）
-- [ ] Vercel 绑定 pocketledger.top
-- [ ] Supabase SMTP 改 noreply@pocketledger.top
+- Capacitor `server.url` 已指向 `ledger.tuchenguang.com`（`capacitor.config.ts:10`）
 
 ## 已知坑位
 - `database.types.ts` 是**手写**，未用 `supabase gen types`；改 schema 需手动同步。

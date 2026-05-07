@@ -34,8 +34,9 @@
 **A5. README/CLAUDE.md 里的 Resend SMTP 说明**
 
 - `CLAUDE.md` 已记录："配置 Resend SMTP：smtp.resend.com:465，发件人 onboarding@resend.dev '口袋记账'，邮箱验证中文化"
-- 待办项：阿里云实名认证通过后，验证域名 pocketledger.top、将发件地址改为 `noreply@pocketledger.top`
 - **结论**：SMTP 通道可用，忘记密码邮件可直接使用现有 Resend 配置发出
+  （pocketledger.top 自定义域名方案已废弃；如未来要切自定义发件人
+  可走 noreply@tuchenguang.com，需在 Resend 验证 tuchenguang.com 子域）
 
 ---
 
