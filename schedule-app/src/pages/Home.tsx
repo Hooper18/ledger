@@ -17,6 +17,7 @@ import {
   NextClassCard,
 } from '../components/shared/ClassStatusCards'
 import EventModal from '../components/shared/EventModal'
+import { useNewEventControl } from '../components/shared/useNewEventControl'
 import TopupModal from '../components/TopupModal'
 import {
   computeCurrentAndNext,
@@ -117,8 +118,18 @@ export default function Home() {
 
   const greeting = getGreeting(now.getHours(), t)
 
+  const newEvent = useNewEventControl({
+    semesterId: semester?.id ?? '',
+    courses,
+    onSaved: reloadEvents,
+  })
+
   return (
-    <Layout title={t('nav.home')} syncKeys={HOME_SYNC_KEYS}>
+    <Layout
+      title={t('nav.home')}
+      syncKeys={HOME_SYNC_KEYS}
+      headerRight={semester ? newEvent.headerButton : undefined}
+    >
       <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24 md:pb-8 space-y-4 md:space-y-6">
         <section>
           <h1 className="text-xl md:text-3xl font-semibold text-text">
@@ -202,6 +213,8 @@ export default function Home() {
         onClose={() => setEditingEvent(null)}
         onSaved={reloadEvents}
       />
+      {semester && newEvent.fab}
+      {semester && newEvent.modal}
     </Layout>
   )
 }
