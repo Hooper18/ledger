@@ -4,46 +4,39 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../contexts/AuthContext'
 import { useMutationGuard } from '../../hooks/useMutationGuard'
 import type { Course, EventType } from '../../lib/types'
+import { useT } from '../../i18n'
+import type { TKey } from '../../i18n'
 
-// 13 个 type 不全显示 —— 横向滚动一行 chip。常用排前面：Personal（个人事项，
-// 如驾校学车、健身预约等）/ DDL / Exam。点中后用 accent 框 + 浅色底高亮。
-const TYPE_OPTIONS: { value: EventType; label: string; color: string }[] = [
-  { value: 'personal', label: 'Personal', color: '#3b82f6' },
-  { value: 'deadline', label: 'DDL', color: '#f59e0b' },
-  { value: 'exam', label: 'Exam', color: '#ef4444' },
-  { value: 'quiz', label: 'Quiz', color: '#f97316' },
-  { value: 'lab_report', label: 'Lab', color: '#0ea5e9' },
-  { value: 'midterm', label: 'Midterm', color: '#ec4899' },
-  { value: 'video_submission', label: 'Video', color: '#a855f7' },
-  { value: 'presentation', label: 'Presentation', color: '#ec4899' },
-  { value: 'tutorial', label: 'Tutorial', color: '#14b8a6' },
-  { value: 'consultation', label: 'Consultation', color: '#14b8a6' },
-  { value: 'holiday', label: 'Holiday', color: '#10b981' },
-  { value: 'revision', label: 'Revision', color: '#eab308' },
-  { value: 'milestone', label: 'Milestone', color: '#6366f1' },
+const TYPE_OPTIONS: { value: EventType; labelKey: TKey; color: string }[] = [
+  { value: 'personal', labelKey: 'newEvent.typePersonal', color: '#3b82f6' },
+  { value: 'deadline', labelKey: 'newEvent.typeDdl', color: '#f59e0b' },
+  { value: 'exam', labelKey: 'newEvent.typeExam', color: '#ef4444' },
+  { value: 'quiz', labelKey: 'newEvent.typeQuiz', color: '#f97316' },
+  { value: 'lab_report', labelKey: 'newEvent.typeLab', color: '#0ea5e9' },
+  { value: 'midterm', labelKey: 'newEvent.typeMidterm', color: '#ec4899' },
+  { value: 'video_submission', labelKey: 'newEvent.typeVideo', color: '#a855f7' },
+  { value: 'presentation', labelKey: 'newEvent.typePresentation', color: '#ec4899' },
+  { value: 'tutorial', labelKey: 'newEvent.typeTutorial', color: '#14b8a6' },
+  { value: 'consultation', labelKey: 'newEvent.typeConsultation', color: '#14b8a6' },
+  { value: 'holiday', labelKey: 'newEvent.typeHoliday', color: '#10b981' },
+  { value: 'revision', labelKey: 'newEvent.typeRevision', color: '#eab308' },
+  { value: 'milestone', labelKey: 'newEvent.typeMilestone', color: '#6366f1' },
 ]
 
 interface Props {
   open: boolean
-  /** ISO 日期，模态打开时作为新事件的默认日期。 */
   defaultDate: string
   semesterId: string
   courses: Course[]
   onClose: () => void
-  /** 保存成功后调用，父组件应 reload 事件列表。 */
   onSaved: () => void
 }
 
-/**
- * 把"现在"向上取整到下一个 30 分钟刻度，作为时间字段的默认值。
- * 用户从月视图点 + 通常是临时记一件即将发生的事，"现在 +X 分钟"
- * 比"00:00"更接近他们的真实意图。
- */
 function nextHalfHour(): string {
   const d = new Date()
   const m = d.getMinutes()
   if (m === 0) {
-    // 已是整点，直接用
+    // already on the hour
   } else if (m <= 30) {
     d.setMinutes(30)
   } else {
@@ -63,6 +56,7 @@ export default function NewEventModal({
 }: Props) {
   const { user } = useAuth()
   const guard = useMutationGuard()
+  const t = useT()
 
   const [type, setType] = useState<EventType>('deadline')
   const [title, setTitle] = useState('')
@@ -74,7 +68,6 @@ export default function NewEventModal({
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
-  // 每次打开（或选中日期变化）都重置一次表单 —— 避免上次的输入残留。
   useEffect(() => {
     if (!open) return
     setType('deadline')
@@ -92,7 +85,7 @@ export default function NewEventModal({
     if (!user) return
     const trimmed = title.trim()
     if (!trimmed) {
-      setErr('请输入标题')
+      setErr(t('newEvent.titleRequired'))
       return
     }
     setSaving(true)
@@ -100,7 +93,6 @@ export default function NewEventModal({
     const { error } = await supabase.from('events').insert({
       user_id: user.id,
       semester_id: semesterId,
-      // personal 事件强制不挂任何课程，避免切换 type 时残留之前选过的课。
       course_id: type === 'personal' ? null : courseId || null,
       title: trimmed,
       type,
@@ -123,7 +115,7 @@ export default function NewEventModal({
   return (
     <Modal
       open={open}
-      title="新建事件"
+      title={t('newEvent.title')}
       onClose={onClose}
       size="lg"
       footer={
@@ -134,7 +126,7 @@ export default function NewEventModal({
             disabled={saving}
             className="flex-1 py-2.5 rounded-lg bg-card border border-border text-dim text-sm font-medium"
           >
-            取消
+            {t('newEvent.cancel')}
           </button>
           <button
             type="button"
@@ -143,21 +135,24 @@ export default function NewEventModal({
             title={guard.title}
             className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60"
           >
-            {saving ? '保存中…' : guard.disabled ? '离线 · 暂不可保存' : '完成'}
+            {saving
+              ? t('newEvent.saving')
+              : guard.disabled
+                ? t('newEvent.offline')
+                : t('newEvent.confirm')}
           </button>
         </div>
       }
     >
       <div className="space-y-4">
-        {/* 类型 chips —— 横向滚动 */}
         <div className="flex gap-2 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
-          {TYPE_OPTIONS.map((t) => {
-            const active = t.value === type
+          {TYPE_OPTIONS.map((opt) => {
+            const active = opt.value === type
             return (
               <button
-                key={t.value}
+                key={opt.value}
                 type="button"
-                onClick={() => setType(t.value)}
+                onClick={() => setType(opt.value)}
                 className={`shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
                   active
                     ? 'border-accent bg-accent/10 text-text'
@@ -166,28 +161,30 @@ export default function NewEventModal({
               >
                 <span
                   className="w-2 h-2 rounded-full shrink-0"
-                  style={{ backgroundColor: t.color }}
+                  style={{ backgroundColor: opt.color }}
                   aria-hidden
                 />
-                {t.label}
+                {t(opt.labelKey)}
               </button>
             )
           })}
         </div>
 
-        {/* 大标题输入框 */}
         <input
           autoFocus
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder={type === 'personal' ? '试着输入"驾校学车"' : '试着输入"作业 1"'}
+          placeholder={
+            type === 'personal'
+              ? t('newEvent.titlePlaceholderPersonal')
+              : t('newEvent.titlePlaceholderDefault')
+          }
           className="w-full px-4 py-3.5 rounded-xl bg-card border border-border text-text placeholder:text-muted focus:outline-none focus:border-accent text-base"
         />
 
-        {/* 时间组：全天 + 日期 + 时间 */}
         <div className="rounded-xl bg-card border border-border overflow-hidden divide-y divide-border">
           <label className="flex items-center justify-between px-4 py-3 cursor-pointer">
-            <span className="text-sm text-text">全天</span>
+            <span className="text-sm text-text">{t('newEvent.allDay')}</span>
             <input
               type="checkbox"
               checked={allDay}
@@ -196,7 +193,7 @@ export default function NewEventModal({
             />
           </label>
           <div className="px-4 py-3 flex items-center justify-between gap-3">
-            <span className="text-sm text-text shrink-0">日期</span>
+            <span className="text-sm text-text shrink-0">{t('newEvent.dateLabel')}</span>
             <input
               type="date"
               value={date}
@@ -206,7 +203,7 @@ export default function NewEventModal({
           </div>
           {!allDay && (
             <div className="px-4 py-3 flex items-center justify-between gap-3">
-              <span className="text-sm text-text shrink-0">时间</span>
+              <span className="text-sm text-text shrink-0">{t('newEvent.timeLabel')}</span>
               <input
                 type="time"
                 value={time}
@@ -217,17 +214,16 @@ export default function NewEventModal({
           )}
         </div>
 
-        {/* 课程关联 — Personal 是个人事项不属于任何课程，直接隐藏。 */}
         {type !== 'personal' && (
           <div className="rounded-xl bg-card border border-border overflow-hidden">
             <div className="px-4 py-3 flex items-center justify-between gap-3">
-              <span className="text-sm text-text shrink-0">关联课程</span>
+              <span className="text-sm text-text shrink-0">{t('newEvent.courseLabel')}</span>
               <select
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
                 className="flex-1 min-w-0 bg-transparent text-text text-sm text-right focus:outline-none"
               >
-                <option value="">无</option>
+                <option value="">{t('newEvent.courseNone')}</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.code} {c.name}
@@ -238,12 +234,11 @@ export default function NewEventModal({
           </div>
         )}
 
-        {/* 备注 */}
         <div className="rounded-xl bg-card border border-border overflow-hidden">
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="输入备注"
+            placeholder={t('newEvent.notesPlaceholder')}
             rows={3}
             className="w-full px-4 py-3 bg-transparent text-text placeholder:text-muted text-sm focus:outline-none resize-none"
           />

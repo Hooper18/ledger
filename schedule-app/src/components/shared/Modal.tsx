@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { useT } from '../../i18n'
 
 interface Props {
   open: boolean
@@ -26,6 +27,7 @@ export default function Modal({
   footer,
   size = 'md',
 }: Props) {
+  const t = useT()
   useEffect(() => {
     if (!open) return
     const onKey = (e: KeyboardEvent) => {
@@ -60,7 +62,7 @@ export default function Modal({
           <button
             onClick={onClose}
             className="p-1.5 rounded-lg hover:bg-hover text-dim"
-            aria-label="关闭"
+            aria-label={t('modal.closeAria')}
           >
             <X size={18} />
           </button>

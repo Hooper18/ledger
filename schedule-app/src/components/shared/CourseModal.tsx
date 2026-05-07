@@ -4,6 +4,7 @@ import Modal from './Modal'
 import { supabase } from '../../lib/supabase'
 import { useMutationGuard } from '../../hooks/useMutationGuard'
 import type { Course } from '../../lib/types'
+import { useT } from '../../i18n'
 
 const PRESET_COLORS = [
   '#3B82F6',
@@ -25,6 +26,7 @@ interface Props {
 
 export default function CourseModal({ course, eventCount, onClose, onSaved }: Props) {
   const guard = useMutationGuard()
+  const t = useT()
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [nameFull, setNameFull] = useState('')
@@ -101,7 +103,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
   return (
     <Modal
       open={!!course}
-      title="编辑课程"
+      title={t('courseModal.title')}
       onClose={onClose}
       footer={
         <div className="flex gap-2">
@@ -113,7 +115,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
               title={guard.title}
               className="px-3 py-2.5 rounded-lg border border-red-500/40 text-red-500 hover:bg-red-500/10 text-sm font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Trash2 size={14} /> 删除
+              <Trash2 size={14} /> {t('courseModal.deleteBtn')}
             </button>
           ) : (
             <>
@@ -122,7 +124,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
                 onClick={() => setConfirmDel(false)}
                 className="px-3 py-2.5 rounded-lg bg-card border border-border text-dim text-sm"
               >
-                取消
+                {t('courseModal.cancel')}
               </button>
               <button
                 type="button"
@@ -131,7 +133,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
                 title={guard.title}
                 className="px-3 py-2.5 rounded-lg bg-red-500 text-white text-sm font-medium disabled:opacity-60"
               >
-                确认删除
+                {t('courseModal.confirmDelete')}
               </button>
             </>
           )}
@@ -142,7 +144,11 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
             title={guard.title}
             className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60"
           >
-            {saving ? '保存中…' : guard.disabled ? '离线 · 暂不可保存' : '保存'}
+            {saving
+              ? t('courseModal.saving')
+              : guard.disabled
+                ? t('courseModal.offline')
+                : t('courseModal.save')}
           </button>
         </div>
       }
@@ -150,16 +156,21 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
       {confirmDel && (
         <div className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-500 flex items-start gap-2">
           <AlertTriangle size={16} className="shrink-0 mt-0.5" />
-          <div>
-            删除 <strong>{code} {name}</strong> 将同时删除该课程下的{' '}
-            <strong>{eventCount}</strong> 条事件与相关时间表，此操作不可恢复。
-          </div>
+          <div
+            dangerouslySetInnerHTML={{
+              __html: t('courseModal.deleteWarning', {
+                code,
+                name,
+                n: eventCount,
+              }),
+            }}
+          />
         </div>
       )}
 
       <form id="course-modal-form" onSubmit={save} className="space-y-3">
         <div className="grid grid-cols-2 gap-3">
-          <Field label="代码 *">
+          <Field label={t('courseModal.codeLabel')}>
             <input
               required
               value={code}
@@ -167,7 +178,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
               className={inputCls}
             />
           </Field>
-          <Field label="学分">
+          <Field label={t('courseModal.creditLabel')}>
             <input
               type="number"
               value={credit}
@@ -177,7 +188,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
           </Field>
         </div>
 
-        <Field label="名称 *">
+        <Field label={t('courseModal.nameLabel')}>
           <input
             required
             value={name}
@@ -186,7 +197,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
           />
         </Field>
 
-        <Field label="完整名称">
+        <Field label={t('courseModal.nameFullLabel')}>
           <input
             value={nameFull}
             onChange={(e) => setNameFull(e.target.value)}
@@ -194,7 +205,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
           />
         </Field>
 
-        <Field label="讲师">
+        <Field label={t('courseModal.lecturerLabel')}>
           <input
             value={lecturer}
             onChange={(e) => setLecturer(e.target.value)}
@@ -203,7 +214,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="邮箱">
+          <Field label={t('courseModal.emailLabel')}>
             <input
               type="email"
               value={lecturerEmail}
@@ -211,7 +222,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
               className={inputCls}
             />
           </Field>
-          <Field label="电话">
+          <Field label={t('courseModal.phoneLabel')}>
             <input
               value={lecturerPhone}
               onChange={(e) => setLecturerPhone(e.target.value)}
@@ -220,7 +231,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
           </Field>
         </div>
 
-        <Field label="办公室">
+        <Field label={t('courseModal.officeLabel')}>
           <input
             value={office}
             onChange={(e) => setOffice(e.target.value)}
@@ -228,7 +239,7 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
           />
         </Field>
 
-        <Field label="颜色">
+        <Field label={t('courseModal.colorLabel')}>
           <div className="flex gap-2 flex-wrap">
             {PRESET_COLORS.map((c) => (
               <button
@@ -239,13 +250,13 @@ export default function CourseModal({ course, eventCount, onClose, onSaved }: Pr
                   color === c ? 'border-text scale-110' : 'border-transparent'
                 }`}
                 style={{ backgroundColor: c }}
-                aria-label={`选择颜色 ${c}`}
+                aria-label={t('courseModal.colorAria', { color: c })}
               />
             ))}
           </div>
         </Field>
 
-        <Field label="备注">
+        <Field label={t('courseModal.notesLabel')}>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}

@@ -5,27 +5,29 @@ import SplitEventModal from './SplitEventModal'
 import { supabase } from '../../lib/supabase'
 import { useMutationGuard } from '../../hooks/useMutationGuard'
 import type { Course, Event, EventStatus, EventType } from '../../lib/types'
+import { useT } from '../../i18n'
+import type { TKey } from '../../i18n'
 
-const EVENT_TYPES: { value: EventType; label: string }[] = [
-  { value: 'personal', label: 'Personal' },
-  { value: 'deadline', label: 'DDL' },
-  { value: 'exam', label: 'Exam' },
-  { value: 'midterm', label: 'Midterm' },
-  { value: 'quiz', label: 'Quiz' },
-  { value: 'lab_report', label: 'Lab Report' },
-  { value: 'video_submission', label: 'Video' },
-  { value: 'presentation', label: 'Presentation' },
-  { value: 'tutorial', label: 'Tutorial' },
-  { value: 'consultation', label: 'Consultation' },
-  { value: 'holiday', label: 'Holiday' },
-  { value: 'revision', label: 'Revision' },
-  { value: 'milestone', label: 'Milestone' },
+const EVENT_TYPES: { value: EventType; labelKey: TKey }[] = [
+  { value: 'personal', labelKey: 'eventModal.typePersonal' },
+  { value: 'deadline', labelKey: 'eventModal.typeDdl' },
+  { value: 'exam', labelKey: 'eventModal.typeExam' },
+  { value: 'midterm', labelKey: 'eventModal.typeMidterm' },
+  { value: 'quiz', labelKey: 'eventModal.typeQuiz' },
+  { value: 'lab_report', labelKey: 'eventModal.typeLab' },
+  { value: 'video_submission', labelKey: 'eventModal.typeVideo' },
+  { value: 'presentation', labelKey: 'eventModal.typePresentation' },
+  { value: 'tutorial', labelKey: 'eventModal.typeTutorial' },
+  { value: 'consultation', labelKey: 'eventModal.typeConsultation' },
+  { value: 'holiday', labelKey: 'eventModal.typeHoliday' },
+  { value: 'revision', labelKey: 'eventModal.typeRevision' },
+  { value: 'milestone', labelKey: 'eventModal.typeMilestone' },
 ]
 
-const STATUSES: { value: EventStatus; label: string }[] = [
-  { value: 'pending', label: 'Pending' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
+const STATUSES: { value: EventStatus; labelKey: TKey }[] = [
+  { value: 'pending', labelKey: 'eventModal.statusPending' },
+  { value: 'completed', labelKey: 'eventModal.statusCompleted' },
+  { value: 'cancelled', labelKey: 'eventModal.statusCancelled' },
 ]
 
 interface Props {
@@ -37,6 +39,7 @@ interface Props {
 
 export default function EventModal({ event, courses, onClose, onSaved }: Props) {
   const guard = useMutationGuard()
+  const t = useT()
   const [courseId, setCourseId] = useState('')
   const [title, setTitle] = useState('')
   const [type, setType] = useState<EventType>('deadline')
@@ -71,8 +74,6 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
     setSplitOpen(false)
   }, [event])
 
-  // Manually editing the date means the user has confirmed it — clear the
-  // inference flags so the warning badge disappears on save.
   const onDateChange = (v: string) => {
     if (event && v !== (event.date ?? '')) {
       setDateInferred(false)
@@ -130,22 +131,19 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
     <>
     <Modal
       open={!!event}
-      title="编辑事件"
+      title={t('eventModal.title')}
       onClose={onClose}
       footer={
         <div className="flex gap-2">
           {!confirmDel ? (
             <>
-              {/* Split stays deliberately muted — it's a rarely-used power
-                  action ("Quizzes (×3)" → 3 independent rows). The button
-                  is discoverable but not competing with save. */}
               <button
                 type="button"
                 onClick={() => setSplitOpen(true)}
                 className="px-3 py-2.5 rounded-lg bg-card border border-border text-dim hover:text-text hover:bg-hover text-sm font-medium flex items-center gap-1"
-                title="把合并的事件拆成多条独立事件"
+                title={t('eventModal.splitTitle')}
               >
-                <Split size={14} /> 拆分
+                <Split size={14} /> {t('eventModal.splitBtn')}
               </button>
               <button
                 type="button"
@@ -154,7 +152,7 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
                 title={guard.title}
                 className="px-3 py-2.5 rounded-lg border border-red-500/40 text-red-500 hover:bg-red-500/10 text-sm font-medium flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                <Trash2 size={14} /> 删除
+                <Trash2 size={14} /> {t('eventModal.deleteBtn')}
               </button>
             </>
           ) : (
@@ -164,7 +162,7 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
                 onClick={() => setConfirmDel(false)}
                 className="px-3 py-2.5 rounded-lg bg-card border border-border text-dim text-sm"
               >
-                取消
+                {t('eventModal.cancel')}
               </button>
               <button
                 type="button"
@@ -173,7 +171,7 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
                 title={guard.title}
                 className="px-3 py-2.5 rounded-lg bg-red-500 text-white text-sm font-medium disabled:opacity-60"
               >
-                确认删除
+                {t('eventModal.confirmDelete')}
               </button>
             </>
           )}
@@ -184,19 +182,23 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
             title={guard.title}
             className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60"
           >
-            {saving ? '保存中…' : guard.disabled ? '离线 · 暂不可保存' : '保存'}
+            {saving
+              ? t('eventModal.saving')
+              : guard.disabled
+                ? t('eventModal.offline')
+                : t('eventModal.save')}
           </button>
         </div>
       }
     >
       <form id="event-modal-form" onSubmit={save} className="space-y-3">
-        <Field label="课程">
+        <Field label={t('eventModal.courseLabel')}>
           <select
             value={courseId}
             onChange={(e) => setCourseId(e.target.value)}
             className={inputCls}
           >
-            <option value="">（无关联课程）</option>
+            <option value="">{t('eventModal.noCourseOption')}</option>
             {courses.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.code} {c.name}
@@ -205,7 +207,7 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
           </select>
         </Field>
 
-        <Field label="标题 *">
+        <Field label={t('eventModal.titleLabel')}>
           <input
             required
             value={title}
@@ -214,22 +216,22 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
           />
         </Field>
 
-        <Field label="类型 *">
+        <Field label={t('eventModal.typeLabel')}>
           <select
             value={type}
             onChange={(e) => setType(e.target.value as EventType)}
             className={inputCls}
           >
-            {EVENT_TYPES.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
+            {EVENT_TYPES.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {t(opt.labelKey)}
               </option>
             ))}
           </select>
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="日期">
+          <Field label={t('eventModal.dateLabel')}>
             <input
               type="date"
               value={date}
@@ -238,11 +240,11 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
             />
             {dateInferred && dateSource && (
               <div className="mt-1 text-[10px] text-amber-600">
-                日期推断自 "<span className="italic">{dateSource}</span>"，改动会清除该标记
+                {t('eventModal.inferredHint', { src: dateSource })}
               </div>
             )}
           </Field>
-          <Field label="时间">
+          <Field label={t('eventModal.timeLabel')}>
             <input
               type="time"
               value={time}
@@ -252,16 +254,16 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
           </Field>
         </div>
 
-        <Field label="权重">
+        <Field label={t('eventModal.weightLabel')}>
           <input
             value={weight}
             onChange={(e) => setWeight(e.target.value)}
-            placeholder="e.g. 15%"
+            placeholder={t('eventModal.weightPlaceholder')}
             className={inputCls}
           />
         </Field>
 
-        <Field label="状态">
+        <Field label={t('eventModal.statusLabel')}>
           <select
             value={status}
             onChange={(e) => setStatus(e.target.value as EventStatus)}
@@ -269,7 +271,7 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
           >
             {STATUSES.map((s) => (
               <option key={s.value} value={s.value}>
-                {s.label}
+                {t(s.labelKey)}
               </option>
             ))}
           </select>
@@ -282,10 +284,10 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
             onChange={(e) => setIsGroup(e.target.checked)}
             className="accent-accent"
           />
-          Group assignment
+          {t('eventModal.groupLabel')}
         </label>
 
-        <Field label="备注">
+        <Field label={t('eventModal.notesLabel')}>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -297,9 +299,6 @@ export default function EventModal({ event, courses, onClose, onSaved }: Props) 
         {err && <div className="text-sm text-red-500">{err}</div>}
       </form>
     </Modal>
-    {/* Split UX is a modal on top of the edit modal. Uses the original
-        `event` (not the unsaved form state) — the user should save any
-        in-flight edits first if they want those to propagate to children. */}
     <SplitEventModal
       event={splitOpen ? event : null}
       onClose={() => setSplitOpen(false)}

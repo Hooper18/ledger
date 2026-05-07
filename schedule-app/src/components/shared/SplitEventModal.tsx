@@ -3,12 +3,12 @@ import Modal from './Modal'
 import { supabase } from '../../lib/supabase'
 import { useMutationGuard } from '../../hooks/useMutationGuard'
 import type { Event } from '../../lib/types'
+import { useT } from '../../i18n'
+import type { TFn } from '../../i18n'
 
 interface Props {
   event: Event | null
   onClose: () => void
-  // Called after a successful split (N inserts + 1 delete). Parent should
-  // close itself and refresh its list.
   onSplit: () => void
 }
 
@@ -19,12 +19,6 @@ interface RowDraft {
   weight: string
 }
 
-// Parse the count marker at the end of a title. Supports:
-//   "Quizzes (×3)"   → count 3, stripped "Quizzes"
-//   "Quizzes (3)"    → count 3, stripped "Quizzes"
-//   "Quizzes ×3"     → count 3, stripped "Quizzes"
-//   "作业 （3）"     → count 3, stripped "作业"
-// Markers must be at the end of the title so "CS101" won't be mis-parsed.
 function detectCount(title: string): { count: number; stripped: string } {
   let m = title.match(/\s*[(（]\s*[×x]\s*(\d+)\s*[)）]\s*$/i)
   if (m) return { count: parseInt(m[1], 10), stripped: title.slice(0, m.index!).trim() }
@@ -35,10 +29,6 @@ function detectCount(title: string): { count: number; stripped: string } {
   return { count: 2, stripped: title.trim() }
 }
 
-// Best-effort English de-pluralization so "Quizzes" auto-fills as "Quiz 1".
-// Operates on the last whitespace-delimited token only (keeps Chinese /
-// multi-word prefixes intact). Not linguistically perfect — user edits are
-// expected to correct edge cases.
 function singularize(phrase: string): string {
   const parts = phrase.split(/\s+/)
   if (parts.length === 0) return phrase
@@ -59,9 +49,6 @@ function singularize(phrase: string): string {
   return parts.join(' ')
 }
 
-// Split a weight string ("15%" → 3) into the per-child share ("5%"), keeping
-// the trailing % if the source had it. Rounds to 2dp; non-numeric weights
-// are passed through unchanged.
 function splitWeight(weight: string | null, count: number): string {
   if (!weight || count <= 0) return ''
   const m = weight.match(/([\d.]+)/)
@@ -73,8 +60,8 @@ function splitWeight(weight: string | null, count: number): string {
   return weight.includes('%') ? `${rounded}%` : String(rounded)
 }
 
-function buildRows(count: number, stem: string, event: Event): RowDraft[] {
-  const base = singularize(stem) || '子事件'
+function buildRows(count: number, stem: string, event: Event, t: TFn): RowDraft[] {
+  const base = singularize(stem) || t('splitEvent.childPlaceholder')
   const perWeight = splitWeight(event.weight, count)
   const dateDefault = event.date ?? ''
   const timeDefault = event.time ? event.time.slice(0, 5) : ''
@@ -92,6 +79,7 @@ function buildRows(count: number, stem: string, event: Event): RowDraft[] {
 
 export default function SplitEventModal({ event, onClose, onSplit }: Props) {
   const guard = useMutationGuard()
+  const t = useT()
   const [count, setCount] = useState(2)
   const [rows, setRows] = useState<RowDraft[]>([])
   const [saving, setSaving] = useState(false)
@@ -102,15 +90,14 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
     [event],
   )
 
-  // Initialize count + rows from the event when the modal opens.
   useEffect(() => {
     if (!event) return
     const { count: detected, stripped } = detectCount(event.title)
     const initial = Math.min(Math.max(detected, 2), 30)
     setCount(initial)
-    setRows(buildRows(initial, stripped, event))
+    setRows(buildRows(initial, stripped, event, t))
     setErr(null)
-  }, [event])
+  }, [event, t])
 
   const onCountChange = (raw: string) => {
     if (!event) return
@@ -123,12 +110,10 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
       const next: RowDraft[] = []
       for (let i = 0; i < clamped; i++) {
         if (i < prev.length) {
-          // Preserve any user edits to title/date/time; only refresh the
-          // per-child weight share since it's a derived value.
           next.push({ ...prev[i], weight: perWeight })
         } else {
           next.push({
-            title: `${singularize(stem) || '子事件'} ${i + 1}`,
+            title: `${singularize(stem) || t('splitEvent.childPlaceholder')} ${i + 1}`,
             date: event.date ?? '',
             time: event.time ? event.time.slice(0, 5) : '',
             weight: perWeight,
@@ -147,12 +132,12 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
     if (!event) return
     const cleaned = rows.map((r) => ({ ...r, title: r.title.trim() }))
     if (cleaned.some((r) => !r.title)) {
-      setErr('每一条子事件都必须有标题')
+      setErr(t('splitEvent.titleEmpty'))
       return
     }
     const titles = cleaned.map((r) => r.title)
     if (new Set(titles).size !== titles.length) {
-      setErr('子事件标题不能重复')
+      setErr(t('splitEvent.titleDuplicate'))
       return
     }
     setSaving(true)
@@ -169,8 +154,6 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
       weight: r.weight || null,
       is_group: event.is_group,
       submission_platform: event.submission_platform,
-      // New children start pending — splitting a completed "Quizzes" into
-      // 3 individual quizzes shouldn't carry the completion status forward.
       status: 'pending' as const,
       source: event.source,
       source_file: event.source_file,
@@ -179,8 +162,6 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
       date_inferred: false,
       date_source: null,
     }))
-    // Insert first, then delete the original. Reverse order would leave us
-    // with zero events if the insert failed after the delete.
     const { error: insertErr } = await supabase.from('events').insert(payloads)
     if (insertErr) {
       setSaving(false)
@@ -193,9 +174,7 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
       .eq('id', event.id)
     setSaving(false)
     if (delErr) {
-      // Inserts already committed — surface the error but don't roll back;
-      // the user can clean up the duplicate manually from the Todo view.
-      setErr(`子事件已创建，但删除原事件失败：${delErr.message}`)
+      setErr(t('splitEvent.insertOkDeleteFail', { msg: delErr.message }))
       return
     }
     onSplit()
@@ -204,7 +183,7 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
   return (
     <Modal
       open={!!event}
-      title="拆分事件"
+      title={t('splitEvent.title')}
       onClose={onClose}
       size="2xl"
       footer={
@@ -215,7 +194,7 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
             disabled={saving}
             className="px-3 py-2.5 rounded-lg bg-card border border-border text-dim text-sm"
           >
-            取消
+            {t('splitEvent.cancel')}
           </button>
           <button
             type="button"
@@ -225,24 +204,24 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
             className="flex-1 py-2.5 rounded-lg bg-accent text-white text-sm font-medium disabled:opacity-60"
           >
             {saving
-              ? '拆分中…'
+              ? t('splitEvent.saving')
               : guard.disabled
-                ? '离线 · 暂不可拆分'
-                : `确认拆分（${count} 条）`}
+                ? t('splitEvent.offline')
+                : t('splitEvent.confirm', { n: count })}
           </button>
         </div>
       }
     >
       <div className="space-y-3">
         <div className="text-xs text-dim">
-          从「<span className="text-text font-medium">{event?.title}</span>
-          」拆出多条独立事件。原事件会被删除，其它字段（课程、类型、备注等）
-          会复制到每条子事件。
+          {t('splitEvent.introPrefix')}
+          <span className="text-text font-medium">{event?.title}</span>
+          {t('splitEvent.introSuffix')}
         </div>
 
         <div className="flex items-end gap-3">
           <label className="block">
-            <div className="text-xs text-dim mb-1">数量</div>
+            <div className="text-xs text-dim mb-1">{t('splitEvent.countLabel')}</div>
             <input
               type="number"
               min={2}
@@ -255,7 +234,7 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
           </label>
           {event?.weight && (
             <div className="text-[11px] text-dim pb-3">
-              权重 {event.weight} 已平分到每条（可在下面手动调整）
+              {t('splitEvent.weightHint', { weight: event.weight })}
             </div>
           )}
         </div>
@@ -273,14 +252,14 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
                 <input
                   value={r.title}
                   onChange={(e) => updateRow(i, { title: e.target.value })}
-                  placeholder="标题"
+                  placeholder={t('splitEvent.titlePlaceholder')}
                   className={`${inputCls} flex-1`}
                   disabled={saving}
                 />
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <label className="block">
-                  <div className="text-[10px] text-dim mb-0.5">日期</div>
+                  <div className="text-[10px] text-dim mb-0.5">{t('splitEvent.dateLabel')}</div>
                   <input
                     type="date"
                     value={r.date}
@@ -290,7 +269,7 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
                   />
                 </label>
                 <label className="block">
-                  <div className="text-[10px] text-dim mb-0.5">时间</div>
+                  <div className="text-[10px] text-dim mb-0.5">{t('splitEvent.timeLabel')}</div>
                   <input
                     type="time"
                     value={r.time}
@@ -300,11 +279,11 @@ export default function SplitEventModal({ event, onClose, onSplit }: Props) {
                   />
                 </label>
                 <label className="block">
-                  <div className="text-[10px] text-dim mb-0.5">权重</div>
+                  <div className="text-[10px] text-dim mb-0.5">{t('splitEvent.weightLabel')}</div>
                   <input
                     value={r.weight}
                     onChange={(e) => updateRow(i, { weight: e.target.value })}
-                    placeholder="e.g. 5%"
+                    placeholder={t('splitEvent.weightPlaceholder')}
                     className={inputCls}
                     disabled={saving}
                   />
