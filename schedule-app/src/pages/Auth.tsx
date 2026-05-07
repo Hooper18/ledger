@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { supabase } from '../lib/supabase'
 import PasswordInput from '../components/PasswordInput'
 import TermsModal from '../components/TermsModal'
+import { useT } from '../i18n'
 
 type Mode = 'signin' | 'signup' | 'forgot'
 
@@ -20,6 +21,7 @@ export const PENDING_INVITE_CODE_KEY = 'pending_invite_code'
 
 export default function AuthPage() {
   const { signIn, signUp, resetPassword } = useAuth()
+  const t = useT()
   const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -107,22 +109,22 @@ export default function AuthPage() {
       if (error) {
         const m = error.message.toLowerCase()
         if (m.includes('rate limit') || m.includes('too many')) {
-          setErr('请求过于频繁，请稍后再试')
+          setErr(t('auth.rateLimit'))
         } else {
-          setErr('发送失败，请稍后再试')
+          setErr(t('auth.sendFailed'))
         }
       } else {
-        setMsg('重置邮件已发送，请查收邮箱')
+        setMsg(t('auth.resetSent'))
       }
       return
     }
 
     if (password.length < 6) {
-      setErr('密码至少 6 位')
+      setErr(t('auth.passwordTooShort'))
       return
     }
     if (mode === 'signup' && password !== confirmPassword) {
-      setErr('两次密码不一致')
+      setErr(t('auth.passwordMismatch'))
       return
     }
 
@@ -133,7 +135,7 @@ export default function AuthPage() {
       if (error) {
         setErr(
           error.message.includes('Invalid login credentials')
-            ? '邮箱或密码错误'
+            ? t('auth.invalidCredentials')
             : error.message,
         )
       }
@@ -152,7 +154,7 @@ export default function AuthPage() {
         localStorage.removeItem(PENDING_INVITE_CODE_KEY)
         setErr(
           error.message.includes('already registered')
-            ? '该邮箱已注册'
+            ? t('auth.emailRegistered')
             : error.message,
         )
       } else {
@@ -184,13 +186,13 @@ export default function AuthPage() {
               <CalendarDays className="text-accent" size={22} />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">XMUM Schedule</h1>
-              <p className="text-xs text-muted mt-0.5">AI 辅助课程日程管理</p>
+              <h1 className="text-2xl font-semibold tracking-tight">{t('auth.appName')}</h1>
+              <p className="text-xs text-muted mt-0.5">{t('auth.appTagline')}</p>
             </div>
           </div>
 
           <p className="text-sm text-dim leading-relaxed">
-            把分散在 <span className="text-text">AC Online</span>、<span className="text-text">Moodle</span>、课件里的课程 / 作业 / 考试 DDL 集中到一个时间线里，自动去重、按周月日视图查看、到期前提醒。给 XMUM 学生自用的工具。
+            {t('auth.brandLongDesc')}
           </p>
 
           <ul className="space-y-3 text-sm">
@@ -199,8 +201,8 @@ export default function AuthPage() {
                 <Sparkles size={14} className="text-accent" />
               </div>
               <div>
-                <div className="font-medium text-text">AI 识别 DDL</div>
-                <div className="text-xs text-dim mt-0.5">上传课件或粘贴课程表，自动提取截止日期</div>
+                <div className="font-medium text-text">{t('auth.feat1Title')}</div>
+                <div className="text-xs text-dim mt-0.5">{t('auth.feat1Desc')}</div>
               </div>
             </li>
             <li className="flex items-start gap-3">
@@ -208,8 +210,8 @@ export default function AuthPage() {
                 <CalendarDays size={14} className="text-accent" />
               </div>
               <div>
-                <div className="font-medium text-text">学期 / 周 / 月视图</div>
-                <div className="text-xs text-dim mt-0.5">按学期周次展示课程，配套校历公假与复习周</div>
+                <div className="font-medium text-text">{t('auth.feat2Title')}</div>
+                <div className="text-xs text-dim mt-0.5">{t('auth.feat2Desc')}</div>
               </div>
             </li>
             <li className="flex items-start gap-3">
@@ -217,8 +219,8 @@ export default function AuthPage() {
                 <Chrome size={14} className="text-accent" />
               </div>
               <div>
-                <div className="font-medium text-text">一键浏览器扩展</div>
-                <div className="text-xs text-dim mt-0.5">Chrome 插件直接抓取课程表与 Moodle DDL</div>
+                <div className="font-medium text-text">{t('auth.feat3Title')}</div>
+                <div className="text-xs text-dim mt-0.5">{t('auth.feat3Desc')}</div>
               </div>
             </li>
           </ul>
@@ -228,7 +230,7 @@ export default function AuthPage() {
             download
             className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline"
           >
-            <Download size={12} /> 下载 Chrome 扩展包 (.7z)
+            <Download size={12} /> {t('auth.extDownloadLong')}
           </a>
         </div>
       </aside>
@@ -241,9 +243,9 @@ export default function AuthPage() {
               <div className="w-14 h-14 rounded-full bg-accent/15 border border-accent/30 flex items-center justify-center">
                 <MailCheck className="text-accent" size={26} />
               </div>
-              <h2 className="text-lg font-semibold">等待邮箱确认</h2>
+              <h2 className="text-lg font-semibold">{t('auth.pendingTitle')}</h2>
               <p className="text-xs text-dim leading-relaxed">
-                确认邮件已发送至
+                {t('auth.pendingDescPrefix')}
                 <span className="block mt-1 text-text break-all font-medium">
                   {pendingConfirmation.email}
                 </span>
@@ -252,21 +254,21 @@ export default function AuthPage() {
 
             <div className="rounded-lg border border-border bg-card px-4 py-3 text-xs text-dim leading-relaxed space-y-1.5">
               <p>
-                请查收邮箱并点击确认链接，
-                <span className="text-text">确认后本页面会自动登录</span>
-                ，无需返回此处输入密码。
+                {t('auth.pendingHelpPrefix')}
+                <span className="text-text">{t('auth.pendingHelpEm')}</span>
+                {t('auth.pendingHelpSuffix')}
               </p>
-              <p>支持在任意设备点击（包括手机）。</p>
+              <p>{t('auth.pendingAnyDevice')}</p>
             </div>
 
             {!pollTimedOut ? (
               <div className="flex items-center justify-center gap-2 text-xs text-dim">
                 <Loader2 size={14} className="animate-spin" />
-                正在等待确认…
+                {t('auth.pendingWaiting')}
               </div>
             ) : (
               <div className="text-xs text-red-500 text-center leading-relaxed">
-                等待超时。如已确认，请手动返回登录。
+                {t('auth.pendingTimedOut')}
               </div>
             )}
 
@@ -276,10 +278,10 @@ export default function AuthPage() {
                 onClick={cancelPendingConfirmation}
                 className="w-full py-2.5 rounded-lg border border-border text-sm text-text hover:bg-hover transition-colors"
               >
-                返回登录
+                {t('auth.backToSignin')}
               </button>
               <p className="text-[10px] text-muted text-center leading-relaxed">
-                没收到邮件？检查垃圾邮件箱，或返回登录后用「忘记密码」重新触发验证。
+                {t('auth.pendingNoEmail')}
               </p>
             </div>
           </div>
@@ -289,32 +291,34 @@ export default function AuthPage() {
           className="w-full max-w-sm space-y-4 md:bg-card md:border md:border-border md:rounded-2xl md:shadow-sm md:p-8"
         >
           <div className="text-center mb-2 md:mb-4">
-            <h1 className="text-2xl font-semibold md:hidden">XMUM Schedule</h1>
-            <p className="text-xs text-muted mt-1 md:hidden">AI 辅助课程日程管理</p>
+            <h1 className="text-2xl font-semibold md:hidden">{t('auth.appName')}</h1>
+            <p className="text-xs text-muted mt-1 md:hidden">{t('auth.appTagline')}</p>
             <h2 className="hidden md:block text-lg font-semibold">
-              {mode === 'signin' ? '欢迎回来' : mode === 'signup' ? '创建账户' : '重置密码'}
+              {mode === 'signin'
+                ? t('auth.welcomeBack')
+                : mode === 'signup'
+                  ? t('auth.createAccount')
+                  : t('auth.resetPassword')}
             </h2>
             <p className="hidden md:block text-xs text-muted mt-1">
               {mode === 'signin'
-                ? '继续管理你的课程与 DDL'
+                ? t('auth.signinSubtitle')
                 : mode === 'signup'
-                  ? '仅需邮箱即可开始使用'
-                  : '输入注册邮箱以接收重置链接'}
+                  ? t('auth.signupSubtitle')
+                  : t('auth.forgotSubtitle')}
             </p>
           </div>
 
           <div className="rounded-lg border border-border bg-card px-4 py-3 text-xs text-dim leading-relaxed space-y-2 md:hidden">
+            <p>{t('auth.brandLongDesc')}</p>
             <p>
-              把分散在 AC Online、Moodle、课件里的 <span className="text-text">课程 / 作业 / 考试 DDL</span> 集中到一个时间线里，自动去重、按周月日视图查看、到期前提醒。给 XMUM 学生自用的工具。
-            </p>
-            <p>
-              配套 Chrome 扩展可一键抓取课程表与 Moodle DDL。
+              {t('auth.extPair')}
               <a
                 href="/extensions.7z"
                 download
                 className="text-accent hover:underline ml-1"
               >
-                下载扩展包 (.7z)
+                {t('auth.extDownloadShort')}
               </a>
             </p>
           </div>
@@ -328,7 +332,7 @@ export default function AuthPage() {
                 mode === 'signin' ? 'bg-accent text-white' : 'text-dim'
               }`}
             >
-              登录
+              {t('auth.signin')}
             </button>
             <button
               type="button"
@@ -337,16 +341,16 @@ export default function AuthPage() {
                 mode === 'signup' ? 'bg-accent text-white' : 'text-dim'
               }`}
             >
-              注册
+              {t('auth.signup')}
             </button>
           </div>
         )}
 
         {mode === 'forgot' && (
           <div>
-            <h2 className="text-base font-semibold">重置密码</h2>
+            <h2 className="text-base font-semibold">{t('auth.resetPassword')}</h2>
             <p className="text-xs text-muted mt-1">
-              输入注册邮箱，我们会发送重置链接
+              {t('auth.forgotForm')}
             </p>
           </div>
         )}
@@ -356,7 +360,7 @@ export default function AuthPage() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          placeholder="邮箱"
+          placeholder={t('auth.emailPlaceholder')}
           autoComplete="email"
           className={inputClass}
         />
@@ -367,7 +371,7 @@ export default function AuthPage() {
               <PasswordInput
                 value={password}
                 onChange={setPassword}
-                placeholder="密码（至少 6 位）"
+                placeholder={t('auth.passwordPlaceholder')}
                 required
                 minLength={6}
                 autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
@@ -379,7 +383,7 @@ export default function AuthPage() {
                     onClick={() => switchMode('forgot')}
                     className="text-xs text-dim hover:text-text transition-colors"
                   >
-                    忘记密码？
+                    {t('auth.forgotPassword')}
                   </button>
                 </div>
               )}
@@ -391,12 +395,12 @@ export default function AuthPage() {
                   <PasswordInput
                     value={confirmPassword}
                     onChange={setConfirmPassword}
-                    placeholder="再次输入密码"
+                    placeholder={t('auth.confirmPasswordPlaceholder')}
                     required
                     autoComplete="new-password"
                   />
                   {passwordMismatch && (
-                    <div className="text-xs text-red-500 mt-1.5">两次密码不一致</div>
+                    <div className="text-xs text-red-500 mt-1.5">{t('auth.passwordMismatch')}</div>
                   )}
                 </div>
 
@@ -404,7 +408,7 @@ export default function AuthPage() {
                   type="text"
                   value={inviteCode}
                   onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="邀请码（选填）"
+                  placeholder={t('auth.inviteCodePlaceholder')}
                   className={inputClass}
                 />
 
@@ -416,13 +420,13 @@ export default function AuthPage() {
                     className="mt-0.5 accent-accent"
                   />
                   <span>
-                    我已阅读并同意
+                    {t('auth.agreeTermsPrefix')}
                     <button
                       type="button"
                       onClick={() => setShowTerms(true)}
                       className="text-accent hover:underline mx-1"
                     >
-                      《使用条款》
+                      {t('auth.termsLink')}
                     </button>
                   </span>
                 </label>
@@ -440,23 +444,23 @@ export default function AuthPage() {
           className="w-full py-3 rounded-lg bg-accent text-white font-medium disabled:opacity-60"
         >
           {loading
-            ? '...'
+            ? t('auth.submitting')
             : mode === 'signin'
-              ? '登录'
+              ? t('auth.signin')
               : mode === 'signup'
-                ? '注册'
-                : '发送重置邮件'}
+                ? t('auth.signup')
+                : t('auth.sendResetEmail')}
         </button>
 
         {mode === 'signin' && (
           <p className="text-xs text-dim text-center leading-relaxed">
-            登录即表示你已阅读并同意
+            {t('auth.signinAgreement')}
             <button
               type="button"
               onClick={() => setShowTerms(true)}
               className="text-accent hover:underline mx-1"
             >
-              《使用条款》
+              {t('auth.termsLink')}
             </button>
           </p>
         )}
@@ -467,7 +471,7 @@ export default function AuthPage() {
             onClick={() => switchMode('signin')}
             className="w-full text-xs text-dim hover:text-text transition-colors"
           >
-            返回登录
+            {t('auth.backToSignin')}
           </button>
         )}
         </form>

@@ -1,3 +1,4 @@
+import type { TFn } from '../i18n'
 import type { WeeklySchedule } from './types'
 
 // Minutes since midnight from an HH:MM[:SS] time string.
@@ -6,12 +7,14 @@ export function toMin(hhmm: string): number {
   return (h || 0) * 60 + (m || 0)
 }
 
-export function formatDuration(mins: number): string {
-  if (mins < 1) return '不到 1 分钟'
-  if (mins < 60) return `${mins} 分钟`
+export function formatDuration(mins: number, t: TFn): string {
+  if (mins < 1) return t('duration.lessThanMinute')
+  if (mins < 60) return t('duration.minutes', { n: mins })
   const h = Math.floor(mins / 60)
   const m = mins % 60
-  return m === 0 ? `${h} 小时` : `${h} 小时 ${m} 分钟`
+  return m === 0
+    ? t('duration.hours', { n: h })
+    : t('duration.hoursMinutes', { h, m })
 }
 
 // Group a flat WeeklySchedule[] by day_of_week (0=Sun..6=Sat). Sessions
@@ -85,13 +88,26 @@ export function computeCurrentAndNext(
   }
 }
 
-const DAY_NAMES_SHORT = ['日', '一', '二', '三', '四', '五', '六']
+const DAY_SHORT_KEYS = [
+  'dayShort.sun',
+  'dayShort.mon',
+  'dayShort.tue',
+  'dayShort.wed',
+  'dayShort.thu',
+  'dayShort.fri',
+  'dayShort.sat',
+] as const
 
 // Human label for a next-session offset. 0 is "today" (don't use this —
 // countdown is more useful there); 1 = 明天, 2..6 = 周X, 7 = 下周X.
-export function relativeDayLabel(offset: number, sessionDow: number): string {
-  if (offset === 1) return '明天'
-  if (offset >= 2 && offset <= 6) return `周${DAY_NAMES_SHORT[sessionDow]}`
-  if (offset === 7) return `下周${DAY_NAMES_SHORT[sessionDow]}`
+export function relativeDayLabel(
+  offset: number,
+  sessionDow: number,
+  t: TFn,
+): string {
+  if (offset === 1) return t('relativeDay.tomorrow')
+  const day = t(DAY_SHORT_KEYS[sessionDow])
+  if (offset >= 2 && offset <= 6) return t('relativeDay.thisWeek', { day })
+  if (offset === 7) return t('relativeDay.nextWeek', { day })
   return ''
 }

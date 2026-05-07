@@ -26,21 +26,37 @@ import {
 import { getDaysUntil, todayISO, typeColor, typeLabel } from '../lib/utils'
 import type { Course, Event, WeeklySchedule } from '../lib/types'
 import type { SyncKey } from '../lib/lastSync'
+import { useLocale, useT } from '../i18n'
+import type { Locale, TFn, TKey } from '../i18n'
 
 const HOME_SYNC_KEYS: SyncKey[] = ['semester', 'courses', 'events']
 
 // Simple three-bucket greeting — morning / afternoon / evening. Anything
 // else (before dawn, very late) still folds into the nearest bucket rather
 // than surfacing a weird "深夜好" label the user didn't ask for.
-function getGreeting(hour: number): string {
-  if (hour < 12) return '早上好'
-  if (hour < 18) return '下午好'
-  return '晚上好'
+function getGreeting(hour: number, t: TFn): string {
+  if (hour < 12) return t('home.greetingMorning')
+  if (hour < 18) return t('home.greetingAfternoon')
+  return t('home.greetingEvening')
 }
 
-function dateHeading(d: Date): string {
-  const days = ['日', '一', '二', '三', '四', '五', '六']
-  return `${d.getMonth() + 1} 月 ${d.getDate()} 日  ·  周${days[d.getDay()]}`
+const DAY_SHORT_KEYS: TKey[] = [
+  'dayShort.sun',
+  'dayShort.mon',
+  'dayShort.tue',
+  'dayShort.wed',
+  'dayShort.thu',
+  'dayShort.fri',
+  'dayShort.sat',
+]
+
+function dateHeading(d: Date, locale: Locale, t: TFn): string {
+  const day = t(DAY_SHORT_KEYS[d.getDay()])
+  if (locale === 'zh') {
+    return `${d.getMonth() + 1} 月 ${d.getDate()} 日  ·  周${day}`
+  }
+  const month = new Intl.DateTimeFormat('en-US', { month: 'short' }).format(d)
+  return `${month} ${d.getDate()} · ${day}`
 }
 
 export default function Home() {
@@ -48,6 +64,8 @@ export default function Home() {
   const { courses, schedule } = useCourses(semester?.id)
   const { events, reload: reloadEvents } = useEvents(semester?.id)
   const { balance } = useBalance()
+  const { locale } = useLocale()
+  const t = useT()
   const [topupOpen, setTopupOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<Event | null>(null)
   // `balance === 0` specifically (not a low-threshold check): we only want
@@ -97,16 +115,16 @@ export default function Home() {
       .slice(0, 5)
   }, [events, today])
 
-  const greeting = getGreeting(now.getHours())
+  const greeting = getGreeting(now.getHours(), t)
 
   return (
-    <Layout title="首页" syncKeys={HOME_SYNC_KEYS}>
+    <Layout title={t('nav.home')} syncKeys={HOME_SYNC_KEYS}>
       <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24 md:pb-8 space-y-4 md:space-y-6">
         <section>
           <h1 className="text-xl md:text-3xl font-semibold text-text">
             {greeting}
           </h1>
-          <p className="text-dim text-sm mt-1">{dateHeading(now)}</p>
+          <p className="text-dim text-sm mt-1">{dateHeading(now, locale, t)}</p>
         </section>
 
         {/* Zero-balance onboarding banner. Opening TopupModal lands the
@@ -117,12 +135,9 @@ export default function Home() {
           <section className="flex items-start gap-3 rounded-xl border border-accent/30 bg-accent/10 px-4 py-3">
             <Gift size={20} className="shrink-0 mt-0.5 text-accent" />
             <div className="flex-1 min-w-0 text-sm text-text leading-relaxed">
-              <div className="font-semibold">你还没有余额</div>
+              <div className="font-semibold">{t('home.zeroBalanceTitle')}</div>
               <p className="text-xs text-dim mt-0.5">
-                兑换邀请码可获得{' '}
-                <span className="text-text font-medium">$1.00</span>{' '}
-                初始额度，用于 AI 解析（Moodle 扫描 / 课件上传 / 快速添加）。
-                没有邀请码也可以直接充值。
+                {t('home.zeroBalanceDesc')}
               </p>
             </div>
             <button
@@ -130,16 +145,16 @@ export default function Home() {
               onClick={() => setTopupOpen(true)}
               className="shrink-0 px-3 py-1.5 rounded-lg bg-accent text-white text-xs font-medium"
             >
-              去兑换
+              {t('home.zeroBalanceCta')}
             </button>
           </section>
         )}
 
         {semLoading ? (
-          <div className="p-8 text-center text-dim text-sm">加载中…</div>
+          <div className="p-8 text-center text-dim text-sm">{t('common.loading')}</div>
         ) : !semester ? (
           <div className="p-8 text-center text-dim text-sm bg-card rounded-lg border border-border">
-            尚未创建学期。请先到「添加」页创建学期并导入课程。
+            {t('home.noSemester')}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
@@ -202,14 +217,17 @@ function TodayScheduleCard({
   nowMin: number
   currentSessionId: string | undefined
 }) {
+  const t = useT()
+  const countKey: TKey =
+    schedule.length === 1 ? 'home.classCountOne' : 'home.classCountOther'
   return (
     <section className="bg-card rounded-xl border border-border p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-text">今日课程</h2>
-        <span className="text-[11px] text-dim">{schedule.length} 节</span>
+        <h2 className="text-sm font-semibold text-text">{t('home.todayClasses')}</h2>
+        <span className="text-[11px] text-dim">{t(countKey, { n: schedule.length })}</span>
       </div>
       {schedule.length === 0 ? (
-        <div className="text-xs text-dim py-4 text-center">今日无课</div>
+        <div className="text-xs text-dim py-4 text-center">{t('home.noClassesToday')}</div>
       ) : (
         <ul className="space-y-2">
           {schedule.map((s) => {
@@ -237,7 +255,7 @@ function TodayScheduleCard({
                     {s.start_time.slice(0, 5)}–{s.end_time.slice(0, 5)}
                   </div>
                   <div className="text-sm font-medium text-text truncate">
-                    {c ? `${c.code} ${c.name}` : '未知课程'}
+                    {c ? `${c.code} ${c.name}` : t('home.unknownCourse')}
                   </div>
                   {s.location && (
                     <div className="text-[11px] text-dim flex items-center gap-0.5 mt-0.5">
@@ -264,19 +282,20 @@ function UpcomingCard({
   courseMap: Record<string, Course>
   onEdit: (event: Event) => void
 }) {
+  const t = useT()
   return (
     <section className="bg-card rounded-xl border border-border p-4 shadow-sm">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-semibold text-text">即将到来的待办</h2>
+        <h2 className="text-sm font-semibold text-text">{t('home.upcomingTodo')}</h2>
         <Link
           to="/todo"
           className="text-[11px] text-accent flex items-center gap-0.5 hover:underline"
         >
-          全部 <ArrowRight size={11} />
+          {t('home.viewAll')} <ArrowRight size={11} />
         </Link>
       </div>
       {events.length === 0 ? (
-        <div className="text-xs text-dim py-4 text-center">暂无待办</div>
+        <div className="text-xs text-dim py-4 text-center">{t('home.noUpcoming')}</div>
       ) : (
         <ul className="space-y-2">
           {events.map((e) => {
@@ -286,10 +305,10 @@ function UpcomingCard({
               days === null
                 ? ''
                 : days === 0
-                  ? '今天'
+                  ? t('home.dayToday')
                   : days === 1
-                    ? '明天'
-                    : `${days} 天后`
+                    ? t('home.dayTomorrow')
+                    : t('home.daysAfter', { n: days })
             return (
               <li key={e.id}>
                 <button
@@ -326,16 +345,17 @@ function UpcomingCard({
 }
 
 function QuickActions() {
+  const t = useT()
   return (
     <section className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-2">
-      <h2 className="text-sm font-semibold text-text mb-2">快捷入口</h2>
+      <h2 className="text-sm font-semibold text-text mb-2">{t('home.quickActions')}</h2>
       <Link
         to="/timetable"
         className="flex items-center justify-between gap-2 p-3 rounded-lg border border-border hover:bg-hover transition-colors"
       >
         <div className="flex items-center gap-3">
           <LayoutGrid size={18} className="text-accent" />
-          <span className="text-sm text-text font-medium">查看完整课表</span>
+          <span className="text-sm text-text font-medium">{t('home.quickFullSchedule')}</span>
         </div>
         <ArrowRight size={14} className="text-dim" />
       </Link>
@@ -345,7 +365,7 @@ function QuickActions() {
       >
         <div className="flex items-center gap-3">
           <ListChecks size={18} className="text-accent" />
-          <span className="text-sm text-text font-medium">查看所有待办</span>
+          <span className="text-sm text-text font-medium">{t('home.quickAllTodo')}</span>
         </div>
         <ArrowRight size={14} className="text-dim" />
       </Link>

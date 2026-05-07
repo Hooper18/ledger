@@ -1,6 +1,7 @@
 import { MapPin } from 'lucide-react'
 import type { Course, WeeklySchedule } from '../../lib/types'
 import { formatDuration, relativeDayLabel } from '../../lib/sessionUtils'
+import { useT } from '../../i18n'
 
 // Rendered even when nothing is in progress — a stable "正在上课" slot users
 // can scan without the card appearing/disappearing unpredictably.
@@ -13,13 +14,16 @@ export function CurrentClassCard({
   course: Course | null
   minsRemaining: number
 }) {
+  const t = useT()
   if (!session || !course) {
     return (
       <div className="rounded-lg border border-border bg-card/60 px-3 py-2.5">
         <div className="text-[10px] font-semibold text-dim uppercase tracking-wider">
-          正在上课
+          {t('classCards.inSession')}
         </div>
-        <div className="text-xs text-dim mt-1">当前无课程进行中</div>
+        <div className="text-xs text-dim mt-1">
+          {t('classCards.nothingInProgress')}
+        </div>
       </div>
     )
   }
@@ -27,10 +31,10 @@ export function CurrentClassCard({
     <div className="rounded-lg border-2 border-accent bg-accent/15 px-3 py-2.5 space-y-1">
       <div className="flex items-center justify-between gap-2">
         <div className="text-[10px] font-semibold text-accent uppercase tracking-wider">
-          ● 正在上课
+          ● {t('classCards.inSession')}
         </div>
         <div className="text-[10px] text-accent font-medium">
-          还剩 {formatDuration(minsRemaining)}
+          {t('classCards.remaining', { duration: formatDuration(minsRemaining, t) })}
         </div>
       </div>
       <div className="text-sm font-semibold text-text font-mono">
@@ -64,23 +68,24 @@ export function NextClassCard({
   offset: number
   minsUntil: number
 }) {
+  const t = useT()
   const badge =
     offset === 0
       ? minsUntil <= 0
-        ? '即将开始'
-        : `${formatDuration(minsUntil)}后`
-      : relativeDayLabel(offset, session.day_of_week)
+        ? t('classCards.startingSoon')
+        : t('classCards.inDuration', { duration: formatDuration(minsUntil, t) })
+      : relativeDayLabel(offset, session.day_of_week, t)
 
   return (
     <div className="rounded-lg border border-accent/30 bg-accent/5 px-3 py-2.5 space-y-1">
       <div className="flex items-center justify-between gap-2">
         <div className="text-[10px] font-semibold text-accent/80 uppercase tracking-wider">
-          下一节课
+          {t('classCards.nextClass')}
         </div>
         <div className="text-[10px] text-accent/80 font-medium">{badge}</div>
       </div>
       <div className="text-sm font-semibold text-text font-mono">
-        {course?.code ?? '未知课程'}
+        {course?.code ?? t('classCards.unknownCourse')}
       </div>
       {course && (
         <div className="text-xs text-text break-words leading-snug">
