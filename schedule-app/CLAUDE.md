@@ -205,8 +205,17 @@ useEvents.load → events 列表
 - [ ] 通知点击 deep link 进一步：按课程模式下命中折叠组时自动展开（当前命中折叠组事件会静默跳过滚动）
 - [ ] Widget 点具体条目跳到 `/todo?event=<id>`（需自定义 URL scheme + `@capacitor/app` `appUrlOpen` 监听）
 - [ ] Widget 课程徽章按 `course.color` 着色（需把 color 写进 snapshot）
+- [ ] Widget 显示事件 end_time（需 Java 端读 + 重打 APK）
+- [ ] Calendar 桌面 Header 加新建事件按钮（移动端 FAB 已有，桌面要联动 selected 日期作为 defaultDate）
 - [ ] Phase 2 导入流程的端到端测试（目前只做过手动验证）
 - [ ] Moodle 抓取的会话续期（cookie 过期需重登）
+
+### 已完成（这次会话）
+- [x] 全 i18n 中英双语 + 类别级独立切换（types/nav/actions）
+- [x] 事件支持 end_time + NewEventModal 按 ddl/slot/span 三组分形 UX
+- [x] Home / Timeline / WeeklySchedule 加新建事件入口（Header + 按钮 / 移动 FAB）
+- [x] Vercel 自动部署接好（`Hooper18/apps` + Root Directory `schedule-app`）
+- [x] GitHub repo 重命名 `ledger` → `apps`
 
 ## 已知坑位（请勿误判为 bug）
 
