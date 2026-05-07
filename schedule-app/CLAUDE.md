@@ -107,6 +107,72 @@ useEvents.load() → syncNotifications(全量 events)
 - `LOW_BALANCE_THRESHOLD_USD = 0.1`：低于触发 UI 警告。
 - 余额预估必须与 `supabase/functions/claude-proxy/index.ts` 的 `estimateRawCostUsd()` **byte-for-byte 一致**——客户端预览和服务端实际扣费基于同一公式，改一边就要改另一边并重新部署 Edge Function。
 
+## 桌面 Widget（Android）
+
+4x2 卡片：顶部日期 + 最多 3 条最近 DDL。整体可点 → 打开 app。
+
+### 文件位置
+| 文件 | 作用 |
+|------|------|
+| `src/lib/widgetSync.ts` | JS 端 snapshot 序列化（未来 7 天 / 最多 10 条 / 排序裁剪） |
+| `src/hooks/useEvents.ts` | events 加载 / setStatus / remove 后调 syncWidget |
+| `android/app/src/main/java/.../WidgetSyncPlugin.java` | Capacitor 插件，写 SharedPreferences `schedule_widget` + 广播 update |
+| `android/app/src/main/java/.../ScheduleWidgetProvider.java` | AppWidgetProvider，渲染 RemoteViews，倒计时计算 |
+| `android/app/src/main/res/layout/widget_schedule.xml` | 4x2 LinearLayout 布局 |
+| `android/app/src/main/res/xml/widget_schedule_info.xml` | metadata（targetCellWidth=4 / Height=2 / 30min tick） |
+| `android/app/src/main/res/drawable/widget_bg.xml` / `widget_badge.xml` | 圆角背景 + 课程徽章 |
+
+### 数据流
+```
+useEvents.load → events 列表
+              ↘ syncWidget（widgetSync.ts）
+                ↘ JSON.stringify → WidgetSync.snapshot 插件桥
+                  ↘ Java 端写 SharedPreferences[schedule_widget][snapshot]
+                    ↘ 广播 ACTION_APPWIDGET_UPDATE
+                      ↘ ScheduleWidgetProvider.onUpdate
+                        ↘ 读 SharedPreferences + 渲染 RemoteViews
+```
+
+### 刷新时机
+- App 内 events 变化（增删改、setStatus）→ plugin 主动 push（即时）
+- 系统 30 分钟 tick（widget_schedule_info.xml `updatePeriodMillis`）
+  → 重新读 SharedPreferences + **重新算倒计时**（关键：跨日时"今天"自动变"明天"）
+- 用户首次添加到桌面 → 立即 onUpdate
+
+### 当前限制（已知非紧迫）
+- **不支持点具体条目跳转**：整体点 widget 只打开 app 到当前路由。点具体某条 DDL 高亮事件需要自定义 URL scheme + `@capacitor/app` 监听 `appUrlOpen`，工作量较大。已在中期待办。
+- **课程徽章颜色固定灰色**：widget 拿不到 courses 列表，无法按课程颜色着色。如要实现需把 `course.color` 也写进 snapshot。
+- **无 WorkManager 主动刷新**：依赖系统 30 分钟 tick + onUpdate 重算倒计时。如发现"app 关着 24 小时后倒计时不准"再加 WorkManager。
+
+### 如何验证（首次构建）
+1. 同步 Capacitor 资源到 android：
+   ```
+   npx cap sync android
+   ```
+2. Android Studio 打开 `schedule-app/android/`，`Build → Make Project` 确认
+   `WidgetSyncPlugin.java` 和 `ScheduleWidgetProvider.java` 都通过编译。
+3. 装 APK 到手机：
+   ```
+   cd android
+   ./gradlew assembleRelease
+   ```
+   或 Android Studio `Run → Run 'app'`。
+4. 启动 app，登录账号，等首页 events 列表加载（这一步 syncWidget 写
+   SharedPreferences）。
+5. 长按桌面空白处 → 添加 widget → 找到"课程日历 · 待办" → 拖到桌面。
+6. 应看到：顶部当天日期，下方最多 3 条 DDL（按 date+time 升序）。
+7. 测试边界：
+   - 在 app 里把最近的 DDL 标完成 → widget 30 秒内自动刷新（plugin push）
+   - 改变手机日期到明天 → 等 30 分钟系统 tick，倒计时应从"今天"变"昨天" /
+     "明天"变"今天"
+   - 没未来 7 天 DDL → widget 显示"未来 7 天没有 DDL"
+8. 点 widget 任意位置 → 打开 schedule app（当前不会跳到具体 DDL）。
+
+### 排错
+- widget 显示空：检查 `adb shell run-as com.tuchenguang.schedule cat /data/data/com.tuchenguang.schedule/shared_prefs/schedule_widget.xml`，看 `<string name="snapshot">` 有没有内容
+- widget 不出现在 picker：检查 AndroidManifest 是否含 `<receiver android:name=".ScheduleWidgetProvider">`
+- 点击不响应：检查 `MainActivity.java` 有 `registerPlugin(WidgetSyncPlugin.class)`
+
 ## Capacitor Android
 
 - 包名：`com.tuchenguang.schedule`（参考 `android/app/build.gradle`）
@@ -137,6 +203,8 @@ useEvents.load() → syncNotifications(全量 events)
 
 ### 中期
 - [ ] 通知点击 deep link 进一步：按课程模式下命中折叠组时自动展开（当前命中折叠组事件会静默跳过滚动）
+- [ ] Widget 点具体条目跳到 `/todo?event=<id>`（需自定义 URL scheme + `@capacitor/app` `appUrlOpen` 监听）
+- [ ] Widget 课程徽章按 `course.color` 着色（需把 color 写进 snapshot）
 - [ ] Phase 2 导入流程的端到端测试（目前只做过手动验证）
 - [ ] Moodle 抓取的会话续期（cookie 过期需重登）
 

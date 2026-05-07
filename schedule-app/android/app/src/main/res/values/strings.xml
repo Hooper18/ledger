@@ -4,4 +4,6 @@
     <string name="title_activity_main">课程日历</string>
     <string name="package_name">com.tuchenguang.schedule</string>
     <string name="custom_url_scheme">com.tuchenguang.schedule</string>
+    <string name="widget_label">课程日历 · 待办</string>
+    <string name="widget_description">显示未来 7 天最近的 3 条 DDL，点击打开 app</string>
 </resources>

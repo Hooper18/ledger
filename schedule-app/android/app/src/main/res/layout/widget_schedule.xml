@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  桌面 widget 4x2 布局。
+  - 顶部 header 一行：app 名 + 当天日期
+  - 中间最多 3 条事件 row（每条：课程徽章 + 标题 + 倒计时）
+  - 0 条时显示空状态文案
+  - 整体可点（widget_root 接 PendingIntent 打开 app）
+
+  RemoteViews 限制：不能用 ConstraintLayout / 自定义 View，必须用
+  LinearLayout / RelativeLayout / FrameLayout / GridLayout 这几个。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="14dp">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:layout_marginBottom="6dp">
+        <TextView
+            android:id="@+id/widget_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="schedule"
+            android:textColor="#9ca3af"
+            android:textSize="11sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.05"/>
+        <TextView
+            android:id="@+id/widget_date"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#9ca3af"
+            android:textSize="11sp"/>
+    </LinearLayout>
+
+    <!-- Empty state（events.length == 0 时显示） -->
+    <TextView
+        android:id="@+id/widget_empty"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:text="未来 7 天没有 DDL"
+        android:textColor="#9ca3af"
+        android:textSize="13sp"
+        android:visibility="gone"/>
+
+    <!-- Row 0 -->
+    <LinearLayout
+        android:id="@+id/widget_row_0"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/widget_row_0_code"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#ffffff"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:minWidth="36dp"
+            android:gravity="center"
+            android:background="@drawable/widget_badge"/>
+        <TextView
+            android:id="@+id/widget_row_0_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"
+            android:textColor="#111827"
+            android:textSize="13sp"
+            android:singleLine="true"
+            android:ellipsize="end"/>
+        <TextView
+            android:id="@+id/widget_row_0_when"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#6b7280"
+            android:textSize="11sp"/>
+    </LinearLayout>
+
+    <!-- Row 1 -->
+    <LinearLayout
+        android:id="@+id/widget_row_1"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/widget_row_1_code"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#ffffff"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:minWidth="36dp"
+            android:gravity="center"
+            android:background="@drawable/widget_badge"/>
+        <TextView
+            android:id="@+id/widget_row_1_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"
+            android:textColor="#111827"
+            android:textSize="13sp"
+            android:singleLine="true"
+            android:ellipsize="end"/>
+        <TextView
+            android:id="@+id/widget_row_1_when"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#6b7280"
+            android:textSize="11sp"/>
+    </LinearLayout>
+
+    <!-- Row 2 -->
+    <LinearLayout
+        android:id="@+id/widget_row_2"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
+        android:visibility="gone">
+        <TextView
+            android:id="@+id/widget_row_2_code"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#ffffff"
+            android:textSize="9sp"
+            android:textStyle="bold"
+            android:paddingLeft="5dp"
+            android:paddingRight="5dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp"
+            android:minWidth="36dp"
+            android:gravity="center"
+            android:background="@drawable/widget_badge"/>
+        <TextView
+            android:id="@+id/widget_row_2_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginLeft="8dp"
+            android:layout_marginRight="8dp"
+            android:textColor="#111827"
+            android:textSize="13sp"
+            android:singleLine="true"
+            android:ellipsize="end"/>
+        <TextView
+            android:id="@+id/widget_row_2_when"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#6b7280"
+            android:textSize="11sp"/>
+    </LinearLayout>
+
+    <!-- 占位让 row 区域顶部对齐（少于 3 条时不至于把 row 撑满整个高度） -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"/>
+
+</LinearLayout>

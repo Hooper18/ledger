@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Widget 配置：
+  - 4x2 网格（minWidth 250dp / minHeight 110dp 兼容旧设备；
+    targetCellWidth/Height 在 API 31+ 给精准 4x2）
+  - updatePeriodMillis 30 分钟：仅作系统兜底刷新，主要靠 plugin 主动 push
+  - resizeMode horizontal|vertical：用户可拖大拖小
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:initialLayout="@layout/widget_schedule"
+    android:previewLayout="@layout/widget_schedule"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_description"/>

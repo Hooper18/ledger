@@ -33,6 +33,20 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- 桌面 widget：显示未来 7 天最近 3 条 DDL。
+             数据来自 SharedPreferences，由 WidgetSyncPlugin 在 JS 端调用时写入。 -->
+        <receiver
+            android:name=".ScheduleWidgetProvider"
+            android:label="@string/widget_label"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_schedule_info"/>
+        </receiver>
     </application>
 
     <!-- Permissions -->

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 课程徽章背景：圆角 4dp + 中性灰，运行时不区分课程颜色（widget 拿不到课程列表）。 -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <corners android:radius="4dp"/>
+    <solid android:color="#6b7280"/>
+</shape>

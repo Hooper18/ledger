@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext'
 import { recordSync, readSync } from '../lib/lastSync'
 import { loadCache, saveCache } from '../lib/dataCache'
 import { syncNotifications } from '../lib/notifications'
+import { syncWidget } from '../lib/widgetSync'
 import type { Event, EventStatus } from '../lib/types'
 
 export function useEvents(semesterId: string | null | undefined) {
@@ -41,6 +42,8 @@ export function useEvents(semesterId: string | null | undefined) {
       syncNotifications(list).catch(() => {
         // 通知失败不影响主流程，吞掉。
       })
+      // 桌面 widget 同步：仅 Android 原生平台生效，函数内部已做平台判断。
+      syncWidget(list).catch(() => {})
     }
     setLoading(false)
   }, [user, semesterId])
@@ -62,8 +65,9 @@ export function useEvents(semesterId: string | null | undefined) {
       setEvents((prev) => {
         const next = prev.map((e) => (e.id === id ? { ...e, status } : e))
         saveCache('events', next)
-        // 状态变成 completed/cancelled 后该事件不再需要提醒。
+        // 状态变成 completed/cancelled 后该事件不再需要提醒，widget 也要刷掉。
         syncNotifications(next).catch(() => {})
+        syncWidget(next).catch(() => {})
         return next
       })
     },
@@ -80,6 +84,7 @@ export function useEvents(semesterId: string | null | undefined) {
       const next = prev.filter((e) => e.id !== id)
       saveCache('events', next)
       syncNotifications(next).catch(() => {})
+      syncWidget(next).catch(() => {})
       return next
     })
   }, [])
