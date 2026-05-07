@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import ThemeToggle from './ThemeToggle'
 import UserMenu from './UserMenu'
 import HelpButton from './HelpButton'
+import { useT } from '../../i18n'
 
 interface Props {
   title: string
@@ -13,6 +14,7 @@ interface Props {
 
 export default function Header({ title, right, showBack, onBack }: Props) {
   const navigate = useNavigate()
+  const t = useT()
   const handleBack = () => {
     if (onBack) onBack()
     else navigate(-1)
@@ -26,7 +28,7 @@ export default function Header({ title, right, showBack, onBack }: Props) {
             <button
               onClick={handleBack}
               className="p-2 rounded-lg hover:bg-hover text-dim transition-colors"
-              aria-label="返回"
+              aria-label={t('header.back')}
             >
               <ArrowLeft size={18} />
             </button>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { CloudOff } from 'lucide-react'
 import { useOnlineStatus } from '../../hooks/useOnlineStatus'
+import { useT } from '../../i18n'
+import type { TFn } from '../../i18n'
 
 interface Props {
   /** 当前页所代表数据的最后一次成功拉取时间（ISO）。null 表示从未拉到过。 */
@@ -12,17 +14,17 @@ interface Props {
  * 离线场景的人最关心"这份数据有多旧"，相对时间在 24h 内最有用，
  * 超过就直接显示日期，避免"3 天前"这种到底准不准的疑惑。
  */
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, t: TFn): string {
   const then = new Date(iso)
   if (Number.isNaN(then.getTime())) return ''
   const now = Date.now()
   const diffSec = Math.floor((now - then.getTime()) / 1000)
-  if (diffSec < 30) return '刚刚'
-  if (diffSec < 60) return `${diffSec} 秒前`
+  if (diffSec < 30) return t('offline.justNow')
+  if (diffSec < 60) return t('offline.secondsAgo', { n: diffSec })
   const diffMin = Math.floor(diffSec / 60)
-  if (diffMin < 60) return `${diffMin} 分钟前`
+  if (diffMin < 60) return t('offline.minutesAgo', { n: diffMin })
   const diffHr = Math.floor(diffMin / 60)
-  if (diffHr < 24) return `${diffHr} 小时前`
+  if (diffHr < 24) return t('offline.hoursAgo', { n: diffHr })
   const sameYear = then.getFullYear() === new Date().getFullYear()
   const m = String(then.getMonth() + 1).padStart(2, '0')
   const d = String(then.getDate()).padStart(2, '0')
@@ -35,6 +37,7 @@ function formatRelative(iso: string): string {
 
 export default function OfflineBanner({ lastSyncedAt }: Props) {
   const online = useOnlineStatus()
+  const t = useT()
   // 让 banner 上的相对时间随时间自动刷新（每分钟一次足够）。
   const [, setTick] = useState(0)
   useEffect(() => {
@@ -52,11 +55,13 @@ export default function OfflineBanner({ lastSyncedAt }: Props) {
       className="px-4 py-1.5 flex items-center gap-2 text-xs text-dim bg-hover border-b border-border"
     >
       <CloudOff size={12} className="shrink-0" aria-hidden />
-      <span className="shrink-0">离线</span>
+      <span className="shrink-0">{t('offline.label')}</span>
       {lastSyncedAt && (
         <>
           <span className="text-muted" aria-hidden>·</span>
-          <span className="truncate">数据更新于 {formatRelative(lastSyncedAt)}</span>
+          <span className="truncate">
+            {t('offline.dataUpdatedAt', { time: formatRelative(lastSyncedAt, t) })}
+          </span>
         </>
       )}
     </div>

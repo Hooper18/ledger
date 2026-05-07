@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Moon, Sun } from 'lucide-react'
 import { applyTheme, getStoredTheme, type Theme } from '../../lib/theme'
+import { useT } from '../../i18n'
 
 export default function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>('light')
+  const t = useT()
 
   useEffect(() => {
-    const t = getStoredTheme()
-    setTheme(t)
-    applyTheme(t)
+    const t0 = getStoredTheme()
+    setTheme(t0)
+    applyTheme(t0)
   }, [])
 
   const toggle = () => {
@@ -21,7 +23,7 @@ export default function ThemeToggle() {
     <button
       onClick={toggle}
       className="p-2 rounded-lg hover:bg-hover text-dim transition-colors"
-      aria-label="切换主题"
+      aria-label={t('theme.toggle')}
     >
       {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
     </button>

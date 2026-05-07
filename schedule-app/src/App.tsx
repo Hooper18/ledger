@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useNavigate } from 'react-route
 import { lazy, Suspense, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { LocaleProvider } from './i18n'
 import { useSemesterBootstrap } from './hooks/useSemesterBootstrap'
 import { useDataPrefetch } from './hooks/useDataPrefetch'
 import InviteRedemptionBanner from './components/InviteRedemptionBanner'
@@ -103,10 +104,12 @@ function AppRoutes() {
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-      </AuthProvider>
-    </BrowserRouter>
+    <LocaleProvider>
+      <BrowserRouter>
+        <AuthProvider>
+          <AppRoutes />
+        </AuthProvider>
+      </BrowserRouter>
+    </LocaleProvider>
   )
 }
