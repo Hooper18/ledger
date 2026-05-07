@@ -3,6 +3,7 @@ import mammoth from 'mammoth'
 import * as pdfjsLib from 'pdfjs-dist'
 // Vite resolves this to a static asset URL; pdfjs loads the worker lazily.
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url'
+import { tStatic } from '../i18n'
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorkerUrl
 
@@ -59,7 +60,11 @@ export function isSupported(file: File): boolean {
 export function checkSize(file: File, kind: ImportKind): string | null {
   const limit = kind === 'image' ? MAX_IMAGE_SIZE : MAX_DOC_SIZE
   if (file.size > limit) {
-    return `文件过大：${(file.size / 1024 / 1024).toFixed(1)}MB，${kind === 'image' ? '图片' : '文档'}上限 ${limit / 1024 / 1024}MB`
+    return tStatic('files.sizeOver', {
+      size: (file.size / 1024 / 1024).toFixed(1),
+      kindLabel: tStatic(kind === 'image' ? 'files.sizeKindImage' : 'files.sizeKindDoc'),
+      limit: limit / 1024 / 1024,
+    })
   }
   return null
 }
@@ -69,7 +74,7 @@ export async function extractText(file: File): Promise<ExtractResult> {
   if (sizeErr) throw new Error(sizeErr)
   const kind = docKind(file.name.toLowerCase())
   if (!kind) {
-    throw new Error('不支持的格式：文档只接受 .pptx / .pdf / .docx')
+    throw new Error(tStatic('files.docNotSupported'))
   }
   const buf = await file.arrayBuffer()
   switch (kind) {
@@ -87,7 +92,7 @@ export async function readImage(file: File): Promise<ImageResult> {
   if (sizeErr) throw new Error(sizeErr)
   const mediaType = imageMediaType(file.name.toLowerCase())
   if (!mediaType) {
-    throw new Error('不支持的图片格式：.png / .jpg / .jpeg / .webp / .gif')
+    throw new Error(tStatic('files.imageNotSupported'))
   }
   const buf = await file.arrayBuffer()
   const bytes = new Uint8Array(buf)

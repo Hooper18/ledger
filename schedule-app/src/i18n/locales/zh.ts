@@ -735,4 +735,26 @@ export const zh = {
     showAria: '显示密码',
     hideAria: '隐藏密码',
   },
+  notif: {
+    defaultTitle: '事件提醒',
+    bodyTimed: '{advance} 分钟后开始 · {type}',
+    bodyAllDay: '明天 · {type}',
+  },
+  files: {
+    sizeOver: '文件过大：{size}MB，{kindLabel}上限 {limit}MB',
+    sizeKindImage: '图片',
+    sizeKindDoc: '文档',
+    docNotSupported: '不支持的格式：文档只接受 .pptx / .pdf / .docx',
+    imageNotSupported: '不支持的图片格式：.png / .jpg / .jpeg / .webp / .gif',
+  },
+  invite: {
+    invalid: '邀请码无效或已被使用',
+    activated: '邀请码已激活，获得 $1.00 新用户福利',
+  },
+  guard: {
+    offlineTitle: '离线状态下不可用',
+  },
+  proxy: {
+    emptyResponse: '空响应',
+  },
 } as const

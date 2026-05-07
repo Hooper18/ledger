@@ -741,4 +741,26 @@ export const en: DeepStringify<typeof zh> = {
     showAria: 'Show password',
     hideAria: 'Hide password',
   },
+  notif: {
+    defaultTitle: 'Event reminder',
+    bodyTimed: 'Starts in {advance} min · {type}',
+    bodyAllDay: 'Tomorrow · {type}',
+  },
+  files: {
+    sizeOver: 'File too large: {size}MB. {kindLabel} limit is {limit}MB',
+    sizeKindImage: 'Image',
+    sizeKindDoc: 'Document',
+    docNotSupported: 'Unsupported format: documents must be .pptx / .pdf / .docx',
+    imageNotSupported: 'Unsupported image: .png / .jpg / .jpeg / .webp / .gif only',
+  },
+  invite: {
+    invalid: 'Invite code is invalid or has been used',
+    activated: 'Invite code activated — $1.00 starter credit added',
+  },
+  guard: {
+    offlineTitle: 'Unavailable while offline',
+  },
+  proxy: {
+    emptyResponse: 'Empty response',
+  },
 }

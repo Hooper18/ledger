@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { PENDING_INVITE_CODE_KEY } from '../pages/Auth'
+import { useT } from '../i18n'
 
 type State =
   | null
@@ -14,6 +15,7 @@ type State =
 // on the next page load after the user clicks the confirm link.
 export function useInviteRedemption(onRedeemed?: () => void) {
   const { user } = useAuth()
+  const t = useT()
   const [state, setState] = useState<State>(null)
   const triedRef = useRef(false)
 
@@ -33,7 +35,7 @@ export function useInviteRedemption(onRedeemed?: () => void) {
         // later session can retry.
         if (error.message.includes('invalid or used code')) {
           localStorage.removeItem(PENDING_INVITE_CODE_KEY)
-          setState({ status: 'failed', message: '邀请码无效或已被使用' })
+          setState({ status: 'failed', message: t('invite.invalid') })
         } else {
           console.warn('[invite] redemption transient error', error)
           setState({ status: 'failed', message: error.message })
@@ -43,11 +45,11 @@ export function useInviteRedemption(onRedeemed?: () => void) {
       localStorage.removeItem(PENDING_INVITE_CODE_KEY)
       setState({
         status: 'success',
-        message: '邀请码已激活，获得 $1.00 新用户福利',
+        message: t('invite.activated'),
       })
       onRedeemed?.()
     })()
-  }, [user, onRedeemed])
+  }, [user, onRedeemed, t])
 
   return state
 }

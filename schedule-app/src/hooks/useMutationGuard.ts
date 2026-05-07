@@ -1,4 +1,5 @@
 import { useOnlineStatus } from './useOnlineStatus'
+import { useT } from '../i18n'
 
 /**
  * 写操作按钮统一守门：离线时返回 disabled=true + 一句解释。
@@ -10,9 +11,10 @@ import { useOnlineStatus } from './useOnlineStatus'
  */
 export function useMutationGuard() {
   const online = useOnlineStatus()
+  const t = useT()
   return {
     online,
     disabled: !online,
-    title: online ? undefined : '离线状态下不可用',
+    title: online ? undefined : t('guard.offlineTitle'),
   } as const
 }

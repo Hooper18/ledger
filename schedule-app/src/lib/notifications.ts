@@ -8,6 +8,7 @@ import { Capacitor } from '@capacitor/core'
 import { LocalNotifications } from '@capacitor/local-notifications'
 import type { Event } from './types'
 import { typeLabel } from './utils'
+import { tStatic } from '../i18n'
 
 const STORAGE_KEY = 'schedule.notification.settings'
 
@@ -120,10 +121,13 @@ export async function syncNotifications(events: Event[]): Promise<void> {
       if (!trigger) return null
       return {
         id: eventToNotificationId(e.id),
-        title: e.title || '事件提醒',
+        title: e.title || tStatic('notif.defaultTitle'),
         body: e.time
-          ? `${settings.advanceMinutes} 分钟后开始 · ${typeLabel(e.type)}`
-          : `明天 · ${typeLabel(e.type)}`,
+          ? tStatic('notif.bodyTimed', {
+              advance: settings.advanceMinutes,
+              type: typeLabel(e.type),
+            })
+          : tStatic('notif.bodyAllDay', { type: typeLabel(e.type) }),
         schedule: { at: trigger },
         // 用户点通知时，listener 拿到这个 eventId 用于路由
         extra: { eventId: e.id },

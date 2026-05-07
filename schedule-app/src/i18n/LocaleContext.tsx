@@ -109,3 +109,16 @@ export function useLocale(): LocaleContextValue {
 export function useT(): TFn {
   return useLocale().t
 }
+
+// 在非 React 环境（lib 函数 / 普通模块）里读当前 locale。
+// 直接读 localStorage —— 与 LocaleProvider 写入的 key 同步。
+export function getActiveLocale(): Locale {
+  return detectInitial()
+}
+
+// 静态版 t —— 没有 React 上下文时使用（通知正文、文件解析 throw 等）。
+// 每次调用都重新读 localStorage，所以语言切换后下次调用即生效。
+export const tStatic: TFn = (key, params) => {
+  const dict = dictionaries[detectInitial()]
+  return interpolate(lookup(dict, key), params)
+}

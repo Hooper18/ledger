@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { AcademicCalendar, Course, EventType, Semester } from '../lib/types'
 import type { FileKind } from '../lib/fileParsers'
 import { todayISO } from '../lib/utils'
+import { tStatic } from '../i18n'
 
 export interface ParsedEvent {
   course_id: string | null
@@ -134,7 +135,7 @@ export function useClaude() {
           },
         )
         if (fnError) throw await normalizeFunctionError(fnError)
-        if (!data) throw new ClaudeProxyError('no_data', 0, '空响应')
+        if (!data) throw new ClaudeProxyError('no_data', 0, tStatic('proxy.emptyResponse'))
         return data.events
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
@@ -173,7 +174,7 @@ export function useClaude() {
           },
         )
         if (fnError) throw await normalizeFunctionError(fnError)
-        if (!data) throw new ClaudeProxyError('no_data', 0, '空响应')
+        if (!data) throw new ClaudeProxyError('no_data', 0, tStatic('proxy.emptyResponse'))
         return data.events
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
@@ -215,7 +216,7 @@ export function useClaude() {
           },
         )
         if (fnError) throw await normalizeFunctionError(fnError)
-        if (!data) throw new ClaudeProxyError('no_data', 0, '空响应')
+        if (!data) throw new ClaudeProxyError('no_data', 0, tStatic('proxy.emptyResponse'))
         return data.events
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e)
@@ -243,7 +244,7 @@ export function useClaude() {
         },
       )
       if (fnError) throw await normalizeFunctionError(fnError)
-      if (!data) throw new ClaudeProxyError('no_data', 0, '空响应')
+      if (!data) throw new ClaudeProxyError('no_data', 0, tStatic('proxy.emptyResponse'))
       return data.courses
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e)
