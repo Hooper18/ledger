@@ -6,6 +6,7 @@ import { useEvents } from '../../hooks/useEvents'
 import CourseCard from '../shared/CourseCard'
 import CourseModal from '../shared/CourseModal'
 import type { Course } from '../../lib/types'
+import { useT } from '../../i18n'
 
 export default function CoursesView() {
   const navigate = useNavigate()
@@ -13,6 +14,7 @@ export default function CoursesView() {
   const { courses, loading, reload: reloadCourses } = useCourses(semester?.id)
   const { events, reload: reloadEvents } = useEvents(semester?.id)
   const [editing, setEditing] = useState<Course | null>(null)
+  const t = useT()
 
   const stats = useMemo(() => {
     const map = new Map<
@@ -37,16 +39,16 @@ export default function CoursesView() {
   }, [courses, events])
 
   if (!semester) {
-    return <div className="p-8 text-center text-dim">尚未创建学期。</div>
+    return <div className="p-8 text-center text-dim">{t('timeline.noSemester')}</div>
   }
 
-  if (loading) return <div className="p-8 text-center text-dim">加载中…</div>
+  if (loading) return <div className="p-8 text-center text-dim">{t('common.loading')}</div>
 
   if (courses.length === 0) {
     return (
       <div className="p-8 text-center text-dim">
-        <p>暂无课程。</p>
-        <p className="text-sm mt-2">前往 Add 页面添加课程。</p>
+        <p>{t('courses.noCourses')}</p>
+        <p className="text-sm mt-2">{t('courses.noCoursesHint')}</p>
       </div>
     )
   }
@@ -56,7 +58,7 @@ export default function CoursesView() {
   return (
     <div className="p-4 space-y-3">
       <div className="text-xs text-dim">
-        {semester.code} · {courses.length} 门课程
+        {t('courses.countLabel', { semester: semester.code, n: courses.length })}
       </div>
       {courses.map((c) => {
         const s = stats.get(c.id) ?? { pending: 0, total: 0, next: null }

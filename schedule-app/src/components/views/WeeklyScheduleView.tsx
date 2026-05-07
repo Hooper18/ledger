@@ -8,11 +8,30 @@ import EventCard from '../shared/EventCard'
 import EventModal from '../shared/EventModal'
 import { isoOf } from '../../lib/utils'
 import type { Course, Event, WeeklySchedule } from '../../lib/types'
+import { useT } from '../../i18n'
+import type { TFn, TKey } from '../../i18n'
 
-// Display labels use Monday-first; the DB column day_of_week is 0=Sun..6=Sat
+// Display order is Monday-first; the DB column day_of_week is 0=Sun..6=Sat
 // (inherited from AC Online), so remap for layout.
-const DAY_LABELS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
-const DAY_LABELS_SHORT = ['一', '二', '三', '四', '五', '六', '日']
+const DAY_LONG_KEYS_MONDAY: TKey[] = [
+  'dayLong.mon',
+  'dayLong.tue',
+  'dayLong.wed',
+  'dayLong.thu',
+  'dayLong.fri',
+  'dayLong.sat',
+  'dayLong.sun',
+]
+
+const DAY_SHORT_KEYS_MONDAY: TKey[] = [
+  'dayShort.mon',
+  'dayShort.tue',
+  'dayShort.wed',
+  'dayShort.thu',
+  'dayShort.fri',
+  'dayShort.sat',
+  'dayShort.sun',
+]
 
 function dayIndexMondayFirst(dow: number) {
   return (dow + 6) % 7
@@ -34,9 +53,6 @@ function hashCode(s: string) {
   return h
 }
 
-// Derive a stable pastel color from the course code. hsla works in both light
-// and dark themes because the alpha-on-background visual is theme-agnostic,
-// and the higher-sat accent stripe/text doubles as the card's "brand".
 function colorForCode(code: string) {
   const h = hashCode(code) % 360
   return {
@@ -50,8 +66,7 @@ export default function WeeklyScheduleView() {
   const { courses, schedule, loading } = useCourses(semester?.id)
   const { events, setStatus, reload: reloadEvents } = useEvents(semester?.id)
   const isDesktop = useIsDesktop()
-  // Vertical density: the desktop grid breathes; on mobile we pack hours
-  // tighter so users see more of the day without scrolling.
+  const t = useT()
   const HOUR_PX = isDesktop ? 64 : 44
 
   const [now, setNow] = useState(() => new Date())
@@ -66,9 +81,6 @@ export default function WeeklyScheduleView() {
     return m
   }, [courses])
 
-  // Default range is 08:00–20:00 — XMUM has evening classes running up to
-  // 20:00, so the axis needs to cover them even if the current schedule
-  // doesn't happen to stretch that far.
   const { startMin, endMin } = useMemo(() => {
     let s = 8 * 60
     let e = 20 * 60
@@ -97,8 +109,6 @@ export default function WeeklyScheduleView() {
   const nowMin = now.getHours() * 60 + now.getMinutes()
   const nowInRange = nowMin >= startMin && nowMin <= endMin
 
-  // Monday of the displayed week — used for both column header date numbers
-  // and the "本周事件" filter range.
   const weekDates = useMemo(() => {
     const monday = new Date(now)
     monday.setHours(0, 0, 0, 0)
@@ -136,8 +146,6 @@ export default function WeeklyScheduleView() {
   }, [events, weekDates])
 
   const [mobileDay, setMobileDay] = useState(todayDow)
-  // Auto-advance the mobile selection when the real weekday rolls over, but
-  // only if the user hasn't manually picked another day yet this session.
   const [mobileDayUserSet, setMobileDayUserSet] = useState(false)
   useEffect(() => {
     if (!mobileDayUserSet) setMobileDay(todayDow)
@@ -151,19 +159,19 @@ export default function WeeklyScheduleView() {
 
   if (loading) {
     return (
-      <div className="p-8 text-center text-dim text-sm">加载中…</div>
+      <div className="p-8 text-center text-dim text-sm">{t('common.loading')}</div>
     )
   }
   if (!semester) {
     return (
-      <div className="p-8 text-center text-dim text-sm">尚未创建学期</div>
+      <div className="p-8 text-center text-dim text-sm">{t('timeline.noSemester')}</div>
     )
   }
   if (schedule.length === 0) {
     return (
       <div className="p-8 text-center text-dim text-sm space-y-2">
-        <p>本学期还没有课程表</p>
-        <p className="text-xs">请先到「导入」页导入课程</p>
+        <p>{t('weekly.noTimetable')}</p>
+        <p className="text-xs">{t('weekly.noTimetableHint')}</p>
       </div>
     )
   }
@@ -216,8 +224,6 @@ export default function WeeklyScheduleView() {
     )
   }
 
-  // Skip the i=0 line — the header's bottom border serves as the top edge of
-  // the body, and a duplicated line at top:0 was visually doubling it.
   const renderGridBackground = () => (
     <>
       {Array.from({ length: hours }).map((_, i) =>
@@ -245,7 +251,7 @@ export default function WeeklyScheduleView() {
     <div className="h-full flex flex-col overflow-hidden relative">
       {/* Mobile day picker */}
       <div className="md:hidden px-2 py-1.5 border-b border-border flex gap-1 shrink-0">
-        {DAY_LABELS_SHORT.map((lbl, i) => {
+        {DAY_SHORT_KEYS_MONDAY.map((key, i) => {
           const active = mobileDay === i
           const isToday = i === todayDow
           return (
@@ -264,31 +270,28 @@ export default function WeeklyScheduleView() {
                     : 'text-dim hover:bg-hover'
               }`}
             >
-              <span className="text-[9px] leading-none font-medium">周</span>
-              <span className="leading-none mt-0.5 font-bold">{lbl}</span>
+              <span className="leading-none font-bold">{t(key)}</span>
             </button>
           )
         })}
       </div>
 
       <div className="flex-1 overflow-y-auto overflow-x-auto pb-24 md:pb-6">
-        {/* Desktop week grid: header is its own sticky row so bg-main covers
-            every column uniformly — sticky-on-each-cell was leaving columns
-            without sessions looking like the body grid lines pierced up. */}
+        {/* Desktop week grid */}
         <div className="hidden md:block min-w-[880px]">
           <div
             className="sticky top-0 z-20 grid bg-main border-b border-border"
             style={{ gridTemplateColumns: '60px repeat(7, minmax(0, 1fr))' }}
           >
             <div className="px-2 py-2" />
-            {DAY_LABELS.map((d, i) => (
+            {DAY_LONG_KEYS_MONDAY.map((key, i) => (
               <div
                 key={i}
                 className={`px-2 py-2 text-xs text-center ${
                   i === todayDow ? 'text-accent font-semibold' : 'text-dim font-medium'
                 }`}
               >
-                <div>{d}</div>
+                <div>{t(key)}</div>
                 <div className="text-[10px] text-muted font-normal mt-0.5">
                   {weekDates[i].getMonth() + 1}/{weekDates[i].getDate()}
                 </div>
@@ -318,8 +321,6 @@ export default function WeeklyScheduleView() {
             {sessionsByDay.map((sessions, dayIdx) => (
               <div
                 key={dayIdx}
-                // No column-wide today tint — header already marks today, and
-                // the red now-line runs through this column anyway.
                 className="relative border-r border-border last:border-r-0"
                 style={{ height: `${gridHeight}px` }}
               >
@@ -360,6 +361,7 @@ export default function WeeklyScheduleView() {
         onToggleOpen={() => setEventsPanelOpen((v) => !v)}
         onEdit={setEditingEvent}
         onToggleStatus={setStatus}
+        t={t}
       />
 
       <EventModal
@@ -380,6 +382,7 @@ interface PanelProps {
   onToggleOpen: () => void
   onEdit: (e: Event) => void
   onToggleStatus: (id: string, status: 'pending' | 'completed') => void
+  t: TFn
 }
 
 function ThisWeekEventsPanel({
@@ -390,6 +393,7 @@ function ThisWeekEventsPanel({
   onToggleOpen,
   onEdit,
   onToggleStatus,
+  t,
 }: PanelProps) {
   const empty = events.length === 0
   const expanded = open && !empty
@@ -404,14 +408,14 @@ function ThisWeekEventsPanel({
           >
             <div className="shrink-0 px-3 py-2 border-b border-border flex items-center justify-between">
               <span className="text-sm font-semibold text-text">
-                本周事件 · {events.length} 条
+                {t('weekly.thisWeekHeading', { n: events.length })}
               </span>
               <button
                 type="button"
                 onClick={onToggleOpen}
                 className="text-xs text-dim hover:text-text px-2 py-1 rounded-md hover:bg-hover transition-colors"
               >
-                收起
+                {t('weekly.collapse')}
               </button>
             </div>
             <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
@@ -442,10 +446,10 @@ function ThisWeekEventsPanel({
           }`}
         >
           {empty ? (
-            <span>本周无事件</span>
+            <span>{t('weekly.thisWeekEmpty')}</span>
           ) : (
             <>
-              <span>本周事件 ({events.length})</span>
+              <span>{t('weekly.thisWeekButtonOpen', { n: events.length })}</span>
               {open ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
             </>
           )}

@@ -5,8 +5,18 @@ import {
   type Holiday,
 } from '../../constants/academicCalendar'
 import { isoOf, parseDate, startOfMonth, todayISO } from '../../lib/utils'
+import { useT } from '../../i18n'
+import type { TFn, TKey } from '../../i18n'
 
-const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六']
+const DAY_SHORT_KEYS: TKey[] = [
+  'dayShort.sun',
+  'dayShort.mon',
+  'dayShort.tue',
+  'dayShort.wed',
+  'dayShort.thu',
+  'dayShort.fri',
+  'dayShort.sat',
+]
 
 // Lists every month that a semester's date range overlaps, in order.
 function monthsInRange(startIso: string, endIso: string): Date[] {
@@ -62,15 +72,16 @@ function buildMonthGrid(monthStart: Date): Date[] {
 export default function AcademicCalendarView() {
   const { semesters, holidays } = ACADEMIC_CALENDAR_2026
   const todayIso = useMemo(() => todayISO(), [])
+  const t = useT()
 
   return (
     <div className="h-full overflow-y-auto no-scrollbar p-4 md:p-6 space-y-8 pb-24 md:pb-8">
       <header>
         <h1 className="text-xl md:text-2xl font-semibold text-text">
-          XMUM 2026 校历
+          {t('academic.headerTitle')}
         </h1>
         <p className="text-xs text-dim mt-1">
-          教学周、复习周、考试周、公共假期一览
+          {t('academic.headerSubtitle')}
         </p>
       </header>
 
@@ -90,13 +101,14 @@ export default function AcademicCalendarView() {
                 semester={sem}
                 holidays={holidays}
                 todayIso={todayIso}
+                t={t}
               />
             ))}
           </div>
         </section>
       ))}
 
-      <Legend holidays={holidays} />
+      <Legend holidays={holidays} t={t} />
     </div>
   )
 }
@@ -106,9 +118,10 @@ interface MiniMonthProps {
   semester: AcademicSemester
   holidays: Holiday[]
   todayIso: string
+  t: TFn
 }
 
-function MiniMonth({ monthStart, semester, holidays, todayIso }: MiniMonthProps) {
+function MiniMonth({ monthStart, semester, holidays, todayIso, t }: MiniMonthProps) {
   const label = `${monthStart.getFullYear()}.${String(monthStart.getMonth() + 1).padStart(2, '0')}`
   const grid = buildMonthGrid(monthStart)
   const rows: Date[][] = []
@@ -122,9 +135,9 @@ function MiniMonth({ monthStart, semester, holidays, todayIso }: MiniMonthProps)
 
       <div className="grid grid-cols-[28px_repeat(7,1fr)] text-center text-[10px] text-muted pb-1">
         <div />
-        {WEEKDAYS.map((w, i) => (
-          <div key={w} className={i === 0 ? 'text-red-500' : ''}>
-            {w}
+        {DAY_SHORT_KEYS.map((key, i) => (
+          <div key={key} className={i === 0 ? 'text-red-500' : ''}>
+            {t(key)}
           </div>
         ))}
       </div>
@@ -203,22 +216,22 @@ function MiniCell({
   )
 }
 
-function Legend({ holidays }: { holidays: Holiday[] }) {
+function Legend({ holidays, t }: { holidays: Holiday[]; t: TFn }) {
   return (
     <section className="space-y-4 border-t border-border pt-6">
       <div className="flex flex-wrap gap-3 text-xs text-dim">
-        <LegendSwatch className="bg-amber-200/60 dark:bg-amber-400/20" label="公共假期" />
-        <LegendSwatch className="bg-orange-200/60 dark:bg-orange-500/20" label="复习周" />
-        <LegendSwatch className="bg-red-200/60 dark:bg-red-500/20" label="考试周" />
+        <LegendSwatch className="bg-amber-200/60 dark:bg-amber-400/20" label={t('academic.legendHoliday')} />
+        <LegendSwatch className="bg-orange-200/60 dark:bg-orange-500/20" label={t('academic.legendRevision')} />
+        <LegendSwatch className="bg-red-200/60 dark:bg-red-500/20" label={t('academic.legendExam')} />
         <LegendSwatch
           className="bg-accent text-white !w-5 !h-5 rounded-full"
-          label="今天"
+          label={t('academic.legendToday')}
         />
       </div>
 
       <div>
         <h3 className="text-xs font-semibold tracking-wider text-muted uppercase mb-2">
-          2026 公共假期
+          {t('academic.holidaysHeading')}
         </h3>
         <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1 text-xs text-dim">
           {holidays.map((h) => (

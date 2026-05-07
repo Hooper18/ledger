@@ -1,6 +1,7 @@
 import { ChevronRight, Pencil } from 'lucide-react'
 import type { Course } from '../../lib/types'
 import { formatShortDate, getDaysUntil } from '../../lib/utils'
+import { useT } from '../../i18n'
 
 interface Props {
   course: Course
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function CourseCard({ course, pendingCount, nextDeadline, onClick, onEdit }: Props) {
+  const t = useT()
   const days = getDaysUntil(nextDeadline?.date)
   return (
     <div
@@ -36,12 +38,13 @@ export default function CourseCard({ course, pendingCount, nextDeadline, onClick
                 : 'bg-hover text-muted'
             }`}
           >
-            {pendingCount} pending
+            {t('courses.pendingCount', { n: pendingCount })}
           </span>
           {nextDeadline?.date && (
             <span className="text-dim truncate">
-              下个 · {formatShortDate(nextDeadline.date)}
-              {days !== null && days >= 0 && ` (${days}d)`}
+              {t('courses.nextDeadlinePrefix', { date: formatShortDate(nextDeadline.date) })}
+              {days !== null && days >= 0 &&
+                t('courses.nextDeadlineDays', { n: days })}
             </span>
           )}
         </div>
@@ -55,7 +58,7 @@ export default function CourseCard({ course, pendingCount, nextDeadline, onClick
               onEdit(course)
             }}
             className="p-1.5 rounded hover:bg-main text-muted hover:text-text"
-            aria-label="编辑课程"
+            aria-label={t('courses.editAria')}
           >
             <Pencil size={14} />
           </button>
