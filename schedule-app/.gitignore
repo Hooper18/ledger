@@ -15,3 +15,5 @@ stats.html
 .idea
 supabase/.temp/
 supabase/.branches/
+.vercel
+.env*.local
