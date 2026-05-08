@@ -10,3 +10,24 @@ STEP*_BACKUP.sql
 twa-builds/
 **/android/app/release.keystore
 **/android/app/*.jks
+**/android/key.properties
+
+# Capacitor 生成的 Android 项目里的 build 缓存
+**/android/.gradle/
+**/android/build/
+**/android/app/build/
+**/android/captures/
+**/android/local.properties
+
+# 本地工具配置（不进仓库）
+.mcp.json
+
+# 一次性任务说明（属于其他项目）
+ARCHIVE_SPEC.md
+
+# 嵌套的独立 Git 项目（各自有 remote，不归本仓库管）
+billiards-scorer/
+pcb-art/
+pcb-art-gerber-ref/
+quant-btc/
+tuchenguang-site/
