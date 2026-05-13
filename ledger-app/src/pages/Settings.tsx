@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LogOut, ChevronRight, X, Check, Lock, Bell } from 'lucide-react'
+import { LogOut, ChevronRight, X, Check, Lock, Bell, ListOrdered } from 'lucide-react'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
+import { useCategorySort, type CategorySortMode } from '../hooks/useCategorySort'
 import { SUPPORTED_CURRENCIES, CURRENCY_LABELS, CURRENCY_SYMBOLS } from '../types'
 import type { Currency } from '../types'
 import type { Lang } from '../lib/i18n'
@@ -20,7 +21,7 @@ import {
   syncReminder,
 } from '../lib/notifications'
 
-type ModalType = 'preferred' | 'default' | 'language' | 'changePwd' | 'export' | 'reminder' | null
+type ModalType = 'preferred' | 'default' | 'language' | 'changePwd' | 'export' | 'reminder' | 'categorySort' | null
 
 function pad(n: number) { return n.toString().padStart(2, '0') }
 
@@ -36,6 +37,7 @@ export default function Settings() {
     setUseLastUsedAsDefault,
   } = useCurrency()
   const { t, lang, setLang } = useLanguage()
+  const { mode: categorySortMode, setMode: setCategorySortMode } = useCategorySort()
 
   const [modal, setModal] = useState<ModalType>(null)
   const [saving, setSaving] = useState(false)
@@ -262,6 +264,23 @@ export default function Settings() {
             </span>
             <ChevronRight size={16} className="text-gray-300 shrink-0" />
           </button>
+
+          <div className="border-t border-gray-50" />
+
+          <button
+            onClick={() => setModal('categorySort')}
+            className="w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 text-left"
+          >
+            <ListOrdered size={18} className="text-gray-500 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-gray-800">{t('categorySortLabel')}</p>
+              <p className="text-xs text-gray-400 mt-0.5">{t('categorySortDesc')}</p>
+            </div>
+            <span className="text-sm font-medium text-[#e53935] mr-1">
+              {categorySortMode === 'recent' ? t('categorySortModeRecent') : t('categorySortModeCustom')}
+            </span>
+            <ChevronRight size={16} className="text-gray-300 shrink-0" />
+          </button>
         </div>
 
         {/* Language settings */}
@@ -368,6 +387,7 @@ export default function Settings() {
                 : modal === 'language'  ? t('selectLanguage')
                 : modal === 'export'    ? t('dataExport')
                 : modal === 'reminder'  ? t('reminderTitle')
+                : modal === 'categorySort' ? t('categorySortModeTitle')
                 : t('changePwdTitle')}
               </h2>
               <button onClick={() => !(saving || pwdLoading || exportLoading) && setModal(null)} className="p-1.5 rounded-full hover:bg-gray-100">
@@ -568,6 +588,47 @@ export default function Settings() {
                   )}
                 </div>
               </form>
+            ) : modal === 'categorySort' ? (
+              <div className="overflow-y-auto flex-1 px-4 pt-3 pb-6">
+                <div className="space-y-2">
+                  {([
+                    { value: 'custom' as CategorySortMode, label: t('categorySortModeCustom'), desc: t('categorySortModeCustomDesc') },
+                    { value: 'recent' as CategorySortMode, label: t('categorySortModeRecent'), desc: t('categorySortModeRecentDesc') },
+                  ]).map(({ value, label, desc }) => {
+                    const selected = categorySortMode === value
+                    return (
+                      <button
+                        key={value}
+                        onClick={() => setCategorySortMode(value)}
+                        className={`w-full flex items-start gap-3 px-4 py-3 rounded-xl border text-left transition-colors ${
+                          selected ? 'bg-red-50 border-[#e53935]' : 'bg-white border-gray-200'
+                        }`}
+                      >
+                        <div className={`mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0 ${
+                          selected ? 'border-[#e53935]' : 'border-gray-300'
+                        }`}>
+                          {selected && <div className="w-2 h-2 rounded-full bg-[#e53935]" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-medium ${selected ? 'text-[#e53935]' : 'text-gray-800'}`}>{label}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{desc}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {categorySortMode === 'custom' && (
+                  <button
+                    onClick={() => { setModal(null); navigate('/category-order') }}
+                    className="mt-4 w-full flex items-center gap-3 px-4 py-3.5 rounded-xl bg-white border border-gray-200 active:bg-gray-50 text-left"
+                  >
+                    <ListOrdered size={18} className="text-gray-500 shrink-0" />
+                    <span className="flex-1 text-sm text-gray-800">{t('categorySortManageOrder')}</span>
+                    <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                  </button>
+                )}
+              </div>
             ) : modal === 'language' ? (
               <div className="overflow-y-auto flex-1">
                 {(['zh', 'en'] as Lang[]).map((l, i) => (
