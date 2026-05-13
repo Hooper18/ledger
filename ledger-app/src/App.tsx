@@ -7,8 +7,11 @@ import { syncReminder } from './lib/notifications'
 import Layout from './components/layout/Layout'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
+// AddTransaction 是 App 最高频的入口，打进主 bundle 避免任何 chunk fetch /
+// Suspense fallback —— 弱网 + precache 偶尔失效时也不会出现"点了记一笔
+// 但首屏白屏 / 类目空白"的情况。chunk gzip 仅 ~3KB。
+import AddTransaction from './pages/AddTransaction'
 
-const AddTransaction = lazy(() => import('./pages/AddTransaction'))
 const Calendar = lazy(() => import('./pages/Calendar'))
 const Charts = lazy(() => import('./pages/Charts'))
 const Settings = lazy(() => import('./pages/Settings'))

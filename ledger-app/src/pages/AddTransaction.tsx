@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useMemo } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { X, ChevronDown } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../contexts/AuthContext'
 import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useTransactions } from '../hooks/useTransactions'
+import { useCategories } from '../hooks/useCategories'
 import type { TransactionType, Currency, TxDetail } from '../types'
 import {
   EXPENSE_CATEGORIES,
@@ -37,9 +37,10 @@ export default function AddTransaction() {
   const navigate = useNavigate()
   const location = useLocation()
   const { user } = useAuth()
-  const { defaultCurrency, baseCurrency, rates } = useCurrency()
+  const { effectiveDefaultCurrency, baseCurrency, rates, recordLastUsedCurrency } = useCurrency()
   const { t } = useLanguage()
   const { insert: insertTx, update: updateTx } = useTransactions()
+  const { categories: allCats } = useCategories()
 
   // Edit mode: location.state.tx is set when navigating from TransactionSheet
   const editTx = (location.state as { tx?: TxDetail } | null)?.tx
@@ -49,8 +50,7 @@ export default function AddTransaction() {
   const [selectedCategory, setSelected] = useState(editTx?.category_id ?? '')
   const [date, setDate]         = useState(editTx?.date ?? localDateStr())
   const [note, setNote]         = useState(editTx?.description ?? '')
-  const [currency, setCurrency] = useState<Currency>((editTx?.currency as Currency) ?? defaultCurrency)
-  const [categories, setCategories] = useState<Category[]>([])
+  const [currency, setCurrency] = useState<Currency>((editTx?.currency as Currency) ?? effectiveDefaultCurrency)
   const [submitting, setSubmitting] = useState(false)
   const [showCurrencyPicker, setShowCPicker] = useState(false)
   const [toast, setToast] = useState('')
@@ -80,25 +80,16 @@ export default function AddTransaction() {
     transfer: { label: t('transfer'), active: 'text-blue-500 border-blue-500'  },
   }
 
-  // Load categories; do NOT reset selectedCategory here — that's handled by type tab clicks
-  useEffect(() => {
-    let cancelled = false
-    async function load() {
-      try {
-        const { data } = await supabase
-          .from('categories')
-          .select('id, name, type, icon')
-          .eq('type', type)
-          .order('name')
-        if (cancelled) return
-        setCategories(data && data.length > 0 ? (data as Category[]) : buildFallback(type))
-      } catch {
-        if (!cancelled) setCategories(buildFallback(type))
-      }
-    }
-    load()
-    return () => { cancelled = true }
-  }, [type])
+  // 分类直接从 useCategories 拿到的 localStorage 快照过滤而来，免去
+  // 进页时的 supabase 网络往返（之前冷启动要 ~3s 才出图标）。
+  // useCategories 已在后台自己拉远端数据，更新后这里 useMemo 自动重算。
+  const categories = useMemo<Category[]>(() => {
+    const filtered = allCats.filter((c) => c.type === type)
+    if (filtered.length === 0) return buildFallback(type)
+    return filtered
+      .map((c) => ({ id: c.id, name: c.name, type: c.type, icon: c.icon }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [allCats, type])
 
   // ─── Numpad ──────────────────────────────────────────────────────────────
 
@@ -149,6 +140,8 @@ export default function AddTransaction() {
     } else {
       await insertTx(payload)
     }
+
+    recordLastUsedCurrency(currency)
 
     setSubmitting(false)
 
