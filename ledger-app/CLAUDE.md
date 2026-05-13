@@ -33,7 +33,7 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
 
 ### 触发器
 - **`handle_new_user`**：新用户注册 → 仅创建 `users_profile` 行，**不创建任何分类**。
-- 分类首次使用时由前端 `buildFallback()`（`src/pages/AddTransaction.tsx:29`）兜底返回默认列表。
+- 分类首次使用时由前端 `buildFallback()`（`src/pages/AddTransaction.tsx`）兜底返回默认列表。`AddTransaction` 进页只读 `useCategories()` 的 localStorage 快照 + `buildFallback` 兜底，**不再**自己发 supabase 请求 —— 避免冷启动 ~3s 等网络才出分类。
 - `set_updated_at`：仅 `users_profile` / `transactions` 上挂触发器（`categories` / `budgets` 无 updated_at 列）。
 
 ### budgets.period
@@ -61,6 +61,7 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
 - 实时汇率：`https://api.exchangerate-api.com/v4/latest/CNY`，localStorage 缓存 1 小时（key: `ledger_fx_rates`）。
 - **存储时快照**：`AddTransaction.tsx` 把 currency→baseCurrency 的瞬时比率写入 `transactions.exchange_rate`。
 - **展示时还原**：`Home.tsx` 优先用 exchange_rate 还原本币，再按当前实时汇率转目标币种。
+- **"上次使用的货币"模式**：Settings 默认记账货币列表顶部的特殊选项。开启后 `effectiveDefaultCurrency` 走 `lastUsedCurrency`，`AddTransaction` 保存时 `recordLastUsedCurrency(currency)` 写回 localStorage（key: `ledger_last_used_currency`；开关 key: `ledger_default_use_last_used`）。本地偏好，不跨设备同步。
 
 ## 路由
 定义于 `src/App.tsx`，Provider 嵌套：`LanguageProvider → AuthProvider → CurrencyProvider`。

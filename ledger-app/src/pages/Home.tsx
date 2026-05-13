@@ -33,10 +33,33 @@ function isFilterActive(f: FilterState) {
     f.types.size > 0 || f.categoryIds.size > 0
 }
 
+// Home 是用户进 App 后第一个落地的页面；在它挂载完后趁空闲预拉 /add
+// 的懒加载 chunk，避免用户点"记一笔"时还要现等 chunk 下载 + parse。
+// 配合 useCategories 的本地缓存，进 /add 应该 100ms 内出图标。
+function preloadAddTransactionChunk() {
+  import('./AddTransaction').catch(() => {
+    // 网络断了也无所谓，真正进 /add 时 Suspense 会再试
+  })
+}
+
 export default function Home() {
 const { user } = useAuth()
   const { baseCurrency, rates, ratesLoading } = useCurrency()
   const { t, lang } = useLanguage()
+
+  useEffect(() => {
+    type IdleWin = Window & {
+      requestIdleCallback?: (cb: () => void, opts?: { timeout?: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+    const w = window as IdleWin
+    if (typeof w.requestIdleCallback === 'function') {
+      const id = w.requestIdleCallback(preloadAddTransactionChunk, { timeout: 1500 })
+      return () => w.cancelIdleCallback?.(id)
+    }
+    const id = window.setTimeout(preloadAddTransactionChunk, 600)
+    return () => window.clearTimeout(id)
+  }, [])
 
   const TX_TYPES: { value: TransactionType; label: string }[] = [
     { value: 'expense',  label: t('expense') },

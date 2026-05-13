@@ -27,7 +27,14 @@ function pad(n: number) { return n.toString().padStart(2, '0') }
 export default function Settings() {
   const navigate = useNavigate()
   const { user, signIn, signOut, updatePassword } = useAuth()
-  const { baseCurrency, defaultCurrency, setBaseCurrency, setDefaultCurrency } = useCurrency()
+  const {
+    baseCurrency,
+    defaultCurrency,
+    useLastUsedAsDefault,
+    setBaseCurrency,
+    setDefaultCurrency,
+    setUseLastUsedAsDefault,
+  } = useCurrency()
   const { t, lang, setLang } = useLanguage()
 
   const [modal, setModal] = useState<ModalType>(null)
@@ -86,13 +93,22 @@ export default function Settings() {
     setSaving(true)
     try {
       if (modal === 'preferred') await setBaseCurrency(c)
-      if (modal === 'default')   await setDefaultCurrency(c)
+      if (modal === 'default') {
+        // 选了具体币种就关掉"跟随上次"模式
+        setUseLastUsedAsDefault(false)
+        await setDefaultCurrency(c)
+      }
       setModal(null)
     } catch {
       // error already logged in CurrencyContext; UI reverted by setBase/setDefault(prev)
     } finally {
       setSaving(false)
     }
+  }
+
+  function handleSelectLastUsed() {
+    setUseLastUsedAsDefault(true)
+    setModal(null)
   }
 
   function handleSelectLang(l: Lang) {
@@ -240,7 +256,9 @@ export default function Settings() {
               <p className="text-xs text-gray-400 mt-0.5">{t('defaultCurrencyDesc')}</p>
             </div>
             <span className="text-sm font-medium text-[#e53935] mr-1">
-              {CURRENCY_SYMBOLS[defaultCurrency]} {defaultCurrency}
+              {useLastUsedAsDefault
+                ? t('useLastUsedCurrency')
+                : `${CURRENCY_SYMBOLS[defaultCurrency]} ${defaultCurrency}`}
             </span>
             <ChevronRight size={16} className="text-gray-300 shrink-0" />
           </button>
@@ -570,8 +588,30 @@ export default function Settings() {
               </div>
             ) : (
               <div className="overflow-y-auto flex-1">
+                {modal === 'default' && (
+                  <button
+                    onClick={handleSelectLastUsed}
+                    disabled={saving}
+                    className={`w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 disabled:opacity-50 transition-colors ${
+                      useLastUsedAsDefault ? 'bg-red-50' : ''
+                    }`}
+                  >
+                    <span className="w-10 text-base shrink-0 text-center">🕘</span>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm text-gray-700">{t('useLastUsedCurrency')}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{t('useLastUsedCurrencyDesc')}</p>
+                    </div>
+                    {useLastUsedAsDefault && (
+                      <Check size={16} className="text-[#e53935] shrink-0" />
+                    )}
+                  </button>
+                )}
                 {SUPPORTED_CURRENCIES.map((c, i) => {
-                  const selected = c === currentValue
+                  const selected =
+                    modal === 'default'
+                      ? !useLastUsedAsDefault && c === currentValue
+                      : c === currentValue
+                  const showBorder = i > 0 || modal === 'default'
                   return (
                     <button
                       key={c}
@@ -579,7 +619,7 @@ export default function Settings() {
                       disabled={saving}
                       className={`w-full flex items-center gap-3 px-4 py-3.5 active:bg-gray-50 disabled:opacity-50 transition-colors ${
                         selected ? 'bg-red-50' : ''
-                      } ${i > 0 ? 'border-t border-gray-50' : ''}`}
+                      } ${showBorder ? 'border-t border-gray-50' : ''}`}
                     >
                       <span className="w-10 text-base font-bold text-gray-500 shrink-0">
                         {CURRENCY_SYMBOLS[c]}
