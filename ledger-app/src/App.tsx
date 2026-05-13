@@ -18,6 +18,7 @@ const Settings = lazy(() => import('./pages/Settings'))
 const Budget = lazy(() => import('./pages/Budget'))
 const ResetPassword = lazy(() => import('./pages/ResetPassword'))
 const About = lazy(() => import('./pages/About'))
+const CategoryOrder = lazy(() => import('./pages/CategoryOrder'))
 
 function LoadingScreen() {
   return (
@@ -117,6 +118,16 @@ function AppRoutes() {
         />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/about" element={<About />} />
+        <Route
+          path="/category-order"
+          element={
+            <ProtectedRoute>
+              <Layout hideNav>
+                <CategoryOrder />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

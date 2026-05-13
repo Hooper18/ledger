@@ -6,6 +6,7 @@ import { useCurrency } from '../contexts/CurrencyContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { useTransactions } from '../hooks/useTransactions'
 import { useCategories } from '../hooks/useCategories'
+import { useCategorySort } from '../hooks/useCategorySort'
 import type { TransactionType, Currency, TxDetail } from '../types'
 import {
   EXPENSE_CATEGORIES,
@@ -41,6 +42,7 @@ export default function AddTransaction() {
   const { t } = useLanguage()
   const { insert: insertTx, update: updateTx } = useTransactions()
   const { categories: allCats } = useCategories()
+  const { applySort, recordUsage } = useCategorySort()
 
   // Edit mode: location.state.tx is set when navigating from TransactionSheet
   const editTx = (location.state as { tx?: TxDetail } | null)?.tx
@@ -81,15 +83,18 @@ export default function AddTransaction() {
   }
 
   // 分类直接从 useCategories 拿到的 localStorage 快照过滤而来，免去
-  // 进页时的 supabase 网络往返（之前冷启动要 ~3s 才出图标）。
-  // useCategories 已在后台自己拉远端数据，更新后这里 useMemo 自动重算。
+  // 进页时的 supabase 网络往返。useCategories 已在后台自己拉远端数据，
+  // 更新后这里 useMemo 自动重算。
+  // 顺序由 useCategorySort 决定：自定义模式按用户在 /category-order 里
+  // 调好的顺序；最近使用模式按 localStorage 里的 lastUsedAt 倒序。
   const categories = useMemo<Category[]>(() => {
     const filtered = allCats.filter((c) => c.type === type)
-    if (filtered.length === 0) return buildFallback(type)
-    return filtered
-      .map((c) => ({ id: c.id, name: c.name, type: c.type, icon: c.icon }))
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [allCats, type])
+    const base: Category[] =
+      filtered.length === 0
+        ? buildFallback(type)
+        : filtered.map((c) => ({ id: c.id, name: c.name, type: c.type, icon: c.icon }))
+    return applySort(base, type)
+  }, [allCats, type, applySort])
 
   // ─── Numpad ──────────────────────────────────────────────────────────────
 
@@ -142,6 +147,7 @@ export default function AddTransaction() {
     }
 
     recordLastUsedCurrency(currency)
+    recordUsage(selectedCategory)
 
     setSubmitting(false)
 

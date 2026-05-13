@@ -63,6 +63,13 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
 - **展示时还原**：`Home.tsx` 优先用 exchange_rate 还原本币，再按当前实时汇率转目标币种。
 - **"上次使用的货币"模式**：Settings 默认记账货币列表顶部的特殊选项。开启后 `effectiveDefaultCurrency` 走 `lastUsedCurrency`，`AddTransaction` 保存时 `recordLastUsedCurrency(currency)` 写回 localStorage（key: `ledger_last_used_currency`；开关 key: `ledger_default_use_last_used`）。本地偏好，不跨设备同步。
 
+## 类目排序
+- `useCategorySort`（`src/hooks/useCategorySort.ts`）：两种模式
+  - `custom`：用户在 `/category-order` 页里上下移动调好的顺序，按 type 分别存（localStorage key: `ledger_category_custom_order`，结构 `{ expense: string[], income: string[], transfer: string[] }`）。没排过就保留 `useCategories` 返回的服务端 created_at 顺序。
+  - `recent`：最近一次记账用过的类目排最前，未用过的按服务端默认顺序兜底（localStorage key: `ledger_category_recent`，结构 `{ [categoryId]: ISO 时间戳 }`）。
+- 切换 / 写操作通过 `ledger:category-sort-changed` window 事件广播，所有 hook 实例 re-read localStorage，无需 Context Provider。
+- `AddTransaction` 保存成功后调 `recordUsage(selectedCategory)`。模式切换 + 入口都在 Settings → 类目排序。
+
 ## 路由
 定义于 `src/App.tsx`，Provider 嵌套：`LanguageProvider → AuthProvider → CurrencyProvider`。
 
