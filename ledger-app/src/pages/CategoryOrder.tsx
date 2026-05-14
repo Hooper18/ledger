@@ -63,7 +63,7 @@ export default function CategoryOrder() {
   ]
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="anim-page flex flex-col h-full bg-white">
 
       {/* Header */}
       <div className="flex items-center px-2 pt-4 pb-3 border-b border-gray-100 shrink-0">
@@ -107,7 +107,7 @@ export default function CategoryOrder() {
                   onClick={() => move(i, -1)}
                   disabled={i === 0}
                   aria-label={t('categoryOrderUp')}
-                  className="p-2 rounded-lg active:bg-gray-100 disabled:opacity-30 disabled:active:bg-transparent"
+                  className="p-2 rounded-lg active:bg-gray-100 active:scale-90 transition-transform disabled:opacity-30 disabled:active:bg-transparent disabled:active:scale-100"
                 >
                   <ChevronUp size={18} className="text-gray-600" />
                 </button>
@@ -115,7 +115,7 @@ export default function CategoryOrder() {
                   onClick={() => move(i, 1)}
                   disabled={i === rows.length - 1}
                   aria-label={t('categoryOrderDown')}
-                  className="p-2 rounded-lg active:bg-gray-100 disabled:opacity-30 disabled:active:bg-transparent"
+                  className="p-2 rounded-lg active:bg-gray-100 active:scale-90 transition-transform disabled:opacity-30 disabled:active:bg-transparent disabled:active:scale-100"
                 >
                   <ChevronDown size={18} className="text-gray-600" />
                 </button>

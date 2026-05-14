@@ -96,7 +96,7 @@ export default function Auth() {
   const agreementParts = agreement.split(linkText)
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="anim-page min-h-screen bg-gray-50 flex flex-col">
       {/* Header */}
       <div className="bg-primary text-white px-6 pt-10 pb-10 text-center relative overflow-hidden">
         <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white/10" />

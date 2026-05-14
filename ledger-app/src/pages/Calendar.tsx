@@ -117,7 +117,7 @@ export default function Calendar() {
   const calHeaders = [0, 1, 2, 3, 4, 5, 6].map(i => t(`calDay${i}` as TranslationKey))
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="anim-page flex flex-col h-full bg-gray-50">
 
       {/* ── Header ── */}
       <div className="bg-white px-4 pt-4 pb-3 border-b border-gray-100 shrink-0">

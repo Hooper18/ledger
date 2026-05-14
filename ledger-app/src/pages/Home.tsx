@@ -242,7 +242,7 @@ const { user } = useAuth()
   const txCountLabel = t('txCountSuffix') ? `${filtered.length} ${t('txCountSuffix')}` : String(filtered.length)
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="anim-page flex flex-col h-full bg-gray-50">
 
       {/* ── Header ── */}
       <div className="text-white px-5 pt-4 pb-16 relative overflow-hidden safe-top"
@@ -452,7 +452,7 @@ const { user } = useAuth()
       {showPicker && createPortal(
         <>
           <div className="fixed inset-0 z-40" onClick={() => setShowPicker(false)} />
-          <div className="fixed z-50 bg-white rounded-xl shadow-xl min-w-[110px]"
+          <div className="anim-rise-fade fixed z-50 bg-white rounded-xl shadow-xl min-w-[110px]"
             style={{ top: pickerPos.top, left: pickerPos.left, maxHeight: '60vh', overflowY: 'auto' }}>
             {DISPLAY_CURRENCIES.map(c => (
               <button key={c} onClick={() => { setDisplayCurrency(c); setShowPicker(false) }}
@@ -471,11 +471,8 @@ const { user } = useAuth()
       {/* ── Filter panel (bottom sheet via portal) ── */}
       {showFilter && createPortal(
         <>
-          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => setShowFilter(false)} />
-          <div
-            className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-2xl z-50 flex flex-col max-h-[85vh]"
-            style={{ animation: 'slideUp .22s ease' }}
-          >
+          <div className="anim-fade-in fixed inset-0 bg-black/40 z-40" onClick={() => setShowFilter(false)} />
+          <div className="anim-slide-up fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-2xl z-50 flex flex-col max-h-[85vh]">
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
               <div className="w-10 h-1 bg-gray-200 rounded-full" />
@@ -572,7 +569,6 @@ const { user } = useAuth()
               </button>
             </div>
           </div>
-          <style>{`@keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }`}</style>
         </>,
         document.body,
       )}

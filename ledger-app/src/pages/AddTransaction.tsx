@@ -166,7 +166,7 @@ export default function AddTransaction() {
   // ─── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="anim-page flex flex-col h-full bg-white">
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b border-gray-100">
@@ -199,12 +199,12 @@ export default function AddTransaction() {
           <div className="grid grid-cols-5 gap-1 px-3 py-3 max-h-48 overflow-y-auto no-scrollbar">
           {categories.map(cat => (
             <button key={cat.id} onClick={() => setSelected(cat.id)}
-              className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-colors ${
+              className={`flex flex-col items-center gap-1 py-2 px-1 rounded-xl transition-colors active:scale-[0.96] ${
                 selectedCategory === cat.id ? 'bg-blue-50' : ''
               }`}
             >
-              <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xl transition-colors ${
-                selectedCategory === cat.id ? 'bg-blue-500' : 'bg-gray-100'
+              <div className={`w-11 h-11 rounded-full flex items-center justify-center text-xl transition-[background-color,transform] duration-150 ${
+                selectedCategory === cat.id ? 'bg-blue-500 scale-105' : 'bg-gray-100'
               }`}>
                 {cat.icon}
               </div>
@@ -259,7 +259,7 @@ export default function AddTransaction() {
                 {currency}<ChevronDown size={12} className="text-gray-400" />
               </button>
               {showCurrencyPicker && (
-                <div className="absolute right-0 bottom-full mb-1 bg-white border border-gray-100 rounded-xl shadow-lg z-20 min-w-[80px] max-h-[180px] overflow-y-auto">
+                <div className="anim-rise-fade absolute right-0 bottom-full mb-1 bg-white border border-gray-100 rounded-xl shadow-lg z-20 min-w-[80px] max-h-[180px] overflow-y-auto">
                   {SUPPORTED_CURRENCIES.map(c => (
                     <button key={c} onClick={() => { setCurrency(c); setShowCPicker(false) }}
                       className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-50 ${
@@ -347,7 +347,7 @@ export default function AddTransaction() {
       </div>
 
       {toast && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-black/75 text-white px-5 py-2.5 rounded-full text-sm whitespace-nowrap z-50 pointer-events-none">
+        <div className="anim-toast fixed bottom-10 left-1/2 bg-black/75 text-white px-5 py-2.5 rounded-full text-sm whitespace-nowrap z-50 pointer-events-none">
           {toast}
         </div>
       )}

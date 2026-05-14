@@ -174,7 +174,7 @@ export default function Budget() {
     : categories.find(c => c.id === editing)?.name ?? t('categoryBudget')
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="anim-page flex flex-col h-full bg-gray-50">
 
       {/* Header */}
       <div className="bg-white px-4 pt-4 pb-4 border-b border-gray-100 shrink-0">
