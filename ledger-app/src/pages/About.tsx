@@ -8,7 +8,7 @@ export default function About() {
   const { lang, setLang, t } = useLanguage()
 
   return (
-    <div className="h-dvh bg-gray-50 flex flex-col overflow-hidden">
+    <div className="anim-page h-dvh bg-gray-50 flex flex-col overflow-hidden">
       <div className="bg-primary text-white px-6 pt-10 pb-10 text-center relative overflow-hidden flex-shrink-0">
         <div className="absolute -top-6 -right-6 w-28 h-28 rounded-full bg-white/10" />
         <div className="absolute -bottom-4 -left-4 w-20 h-20 rounded-full bg-white/10" />

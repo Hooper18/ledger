@@ -48,7 +48,7 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center px-5">
+    <div className="anim-page min-h-screen bg-gray-50 flex flex-col justify-center px-5">
       <div className="bg-white rounded-2xl shadow-lg p-6">
         <div className="mb-5">
           <h1 className="text-lg font-bold text-gray-800">{t('resetPasswordTitle')}</h1>

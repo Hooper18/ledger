@@ -204,7 +204,7 @@ export default function Settings() {
   const currentValue = modal === 'preferred' ? baseCurrency : defaultCurrency
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
+    <div className="anim-page flex flex-col h-full bg-gray-50">
 
       {/* Header */}
       <div className="bg-white px-4 pt-4 pb-4 border-b border-gray-100 shrink-0">
@@ -370,9 +370,8 @@ export default function Settings() {
       {/* Bottom sheet (currency picker + language picker) */}
       {modal && (
         <>
-          <div className="fixed inset-0 bg-black/40 z-40" onClick={() => !(saving || pwdLoading || exportLoading) && setModal(null)} />
-          <div className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-2xl z-50 flex flex-col max-h-[70vh]"
-            style={{ animation: 'slideUp .22s ease' }}>
+          <div className="anim-fade-in fixed inset-0 bg-black/40 z-40" onClick={() => !(saving || pwdLoading || exportLoading) && setModal(null)} />
+          <div className="anim-slide-up fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-2xl z-50 flex flex-col max-h-[70vh]">
 
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1 shrink-0">
@@ -696,7 +695,6 @@ export default function Settings() {
               </div>
             )}
           </div>
-          <style>{`@keyframes slideUp { from { transform: translateY(100%) } to { transform: translateY(0) } }`}</style>
         </>
       )}
     </div>
