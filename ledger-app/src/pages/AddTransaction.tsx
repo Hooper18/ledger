@@ -40,9 +40,9 @@ export default function AddTransaction() {
   const { user } = useAuth()
   const { effectiveDefaultCurrency, baseCurrency, rates, recordLastUsedCurrency } = useCurrency()
   const { t } = useLanguage()
-  const { insert: insertTx, update: updateTx } = useTransactions()
+  const { transactions, insert: insertTx, update: updateTx } = useTransactions()
   const { categories: allCats } = useCategories()
-  const { applySort, recordUsage } = useCategorySort()
+  const { applySort } = useCategorySort()
 
   // Edit mode: location.state.tx is set when navigating from TransactionSheet
   const editTx = (location.state as { tx?: TxDetail } | null)?.tx
@@ -82,19 +82,37 @@ export default function AddTransaction() {
     transfer: { label: t('transfer'), active: 'text-blue-500 border-blue-500'  },
   }
 
+  // "最近使用优先"模式的 lastUsedAt 直接从 transactions 派生：每个
+  // category_id 取它出现过的所有 tx 里最大的 created_at。这样老用户的
+  // 历史交易也算数，不依赖任何手动 record 调用 —— transactions 已经是
+  // 事实来源，不重复维护一份。tx insert 会立刻把行加进 transactions
+  // 数组（乐观更新），所以保存完一笔后下次进来即生效。
+  const lastUsedAt = useMemo<Record<string, string>>(() => {
+    const m: Record<string, string> = {}
+    for (const tx of transactions) {
+      if (!tx.category_id) continue
+      const ts = tx.created_at ?? tx.date
+      if (!ts) continue
+      if (!m[tx.category_id] || m[tx.category_id] < ts) {
+        m[tx.category_id] = ts
+      }
+    }
+    return m
+  }, [transactions])
+
   // 分类直接从 useCategories 拿到的 localStorage 快照过滤而来，免去
   // 进页时的 supabase 网络往返。useCategories 已在后台自己拉远端数据，
   // 更新后这里 useMemo 自动重算。
   // 顺序由 useCategorySort 决定：自定义模式按用户在 /category-order 里
-  // 调好的顺序；最近使用模式按 localStorage 里的 lastUsedAt 倒序。
+  // 调好的顺序；最近使用模式按上面派生的 lastUsedAt 倒序。
   const categories = useMemo<Category[]>(() => {
     const filtered = allCats.filter((c) => c.type === type)
     const base: Category[] =
       filtered.length === 0
         ? buildFallback(type)
         : filtered.map((c) => ({ id: c.id, name: c.name, type: c.type, icon: c.icon }))
-    return applySort(base, type)
-  }, [allCats, type, applySort])
+    return applySort(base, type, lastUsedAt)
+  }, [allCats, type, applySort, lastUsedAt])
 
   // ─── Numpad ──────────────────────────────────────────────────────────────
 
@@ -147,7 +165,7 @@ export default function AddTransaction() {
     }
 
     recordLastUsedCurrency(currency)
-    recordUsage(selectedCategory)
+    // 类目"最近使用"由 useTransactions 的 transactions 数组派生，无需单独记录。
 
     setSubmitting(false)
 

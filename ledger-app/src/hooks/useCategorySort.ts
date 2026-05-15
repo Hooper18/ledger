@@ -4,15 +4,15 @@ import type { TransactionType } from '../types'
 // 记账类目展示顺序的两种模式，本地偏好（不跨设备）。
 //   · custom：用户在「管理类目顺序」里上下移动决定的顺序；没排过就保留
 //             useCategories 返回的服务端 created_at 升序，跟早期版本对齐。
-//   · recent：最近一次记账用过的类目排最前，未用过的按服务端默认顺序兜底。
+//   · recent：最近一次记账用过的类目排最前。"最近"由 caller 从交易记录
+//             表（useTransactions）算出 `lastUsedAt: { [categoryId]: ISO }`
+//             传进来 —— 比单独维护一份 localStorage map 准（自动覆盖历史
+//             交易），且少一处状态需要同步。
 //
 // 多个组件（Settings / AddTransaction / CategoryOrder）会同时挂这个 hook，
-// 写操作通过 window 事件广播，让所有实例都 re-read localStorage —— 比挂
-// Context Provider 简单，跨 tab 也照样能用（不同 tab 走 storage 事件，
-// 但目前移动端单实例为主，这里不依赖 storage 事件）。
+// 写操作通过 window 事件广播，让所有实例都 re-read localStorage。
 
 const MODE_KEY = 'ledger_category_sort_mode'
-const RECENT_KEY = 'ledger_category_recent'
 const CUSTOM_ORDER_KEY = 'ledger_category_custom_order'
 const CHANGE_EVENT = 'ledger:category-sort-changed'
 
@@ -26,15 +26,6 @@ function readMode(): CategorySortMode {
     return localStorage.getItem(MODE_KEY) === 'recent' ? 'recent' : 'custom'
   } catch {
     return 'custom'
-  }
-}
-
-function readRecent(): Record<string, string> {
-  try {
-    const s = localStorage.getItem(RECENT_KEY)
-    return s ? (JSON.parse(s) as Record<string, string>) : {}
-  } catch {
-    return {}
   }
 }
 
@@ -65,13 +56,11 @@ interface SortableCategory {
 
 export function useCategorySort() {
   const [mode, setModeState] = useState<CategorySortMode>(readMode)
-  const [recent, setRecent] = useState<Record<string, string>>(readRecent)
   const [customOrder, setCustomOrderState] = useState<CustomOrderMap>(readCustom)
 
   useEffect(() => {
     const handler = () => {
       setModeState(readMode())
-      setRecent(readRecent())
       setCustomOrderState(readCustom())
     }
     window.addEventListener(CHANGE_EVENT, handler)
@@ -85,21 +74,6 @@ export function useCategorySort() {
       // localStorage 不可用：UI 仍能切换，刷新后回到默认
     }
     setModeState(m)
-    notify()
-  }, [])
-
-  const recordUsage = useCallback((id: string) => {
-    if (!id) return
-    const now = new Date().toISOString()
-    setRecent((prev) => {
-      const next = { ...prev, [id]: now }
-      try {
-        localStorage.setItem(RECENT_KEY, JSON.stringify(next))
-      } catch {
-        // 配额炸/被禁；不影响保存交易本身
-      }
-      return next
-    })
     notify()
   }, [])
 
@@ -119,15 +93,24 @@ export function useCategorySort() {
     [],
   )
 
-  // 排序：custom 模式按用户存的 ID 顺序，没有就保持入参顺序（=服务端 created_at）；
-  // recent 模式按最近使用时间倒序，未用过的统一排后面（保持入参相对顺序，稳定排序）。
+  // 排序：
+  // · recent 模式：按 lastUsedAt 倒序排；caller 从 useTransactions() 的
+  //   transactions 数组算出 { [categoryId]: max(created_at) } 传进来。
+  //   没记录的统一排到后面，保持入参相对顺序（稳定排序）。
+  // · custom 模式：按用户存的 ID 顺序；没排过就保留入参顺序（=服务端
+  //   created_at 升序，跟早期版本完全一致）。
   const applySort = useCallback(
-    <T extends SortableCategory>(cats: T[], type: TransactionType): T[] => {
+    <T extends SortableCategory>(
+      cats: T[],
+      type: TransactionType,
+      lastUsedAt?: Record<string, string>,
+    ): T[] => {
       if (cats.length === 0) return cats
       if (mode === 'recent') {
+        const map = lastUsedAt ?? {}
         return [...cats].sort((a, b) => {
-          const ta = recent[a.id] ?? ''
-          const tb = recent[b.id] ?? ''
+          const ta = map[a.id] ?? ''
+          const tb = map[b.id] ?? ''
           if (tb > ta) return 1
           if (tb < ta) return -1
           return 0
@@ -142,8 +125,8 @@ export function useCategorySort() {
         return ia - ib
       })
     },
-    [mode, recent, customOrder],
+    [mode, customOrder],
   )
 
-  return { mode, setMode, recordUsage, customOrder, setCustomOrder, applySort }
+  return { mode, setMode, customOrder, setCustomOrder, applySort }
 }
