@@ -56,7 +56,8 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
   - `Currency` 联合类型
   - `SUPPORTED_CURRENCIES` 数组
   - `CURRENCY_SYMBOLS`、`CURRENCY_LABELS`
-- 现有：CNY · MYR · SGD · USD · HKD · JPY · EUR · GBP · THB · KHR · TWD · AUD · MOP
+- 现有：CNY · MYR · SGD · USD · HKD · JPY · EUR · GBP · THB · KHR · NTD · AUD · MOP
+- 历史遗留：早期版本写入的 `currency = 'TWD'` 在读路径会被归一为 `'NTD'`（`normalizeCurrencyCode` in `src/types/index.ts`；`useTransactions` / `useBudgets` / `CurrencyContext` 三处入口都覆盖；FX API 响应里的 `rates.TWD` 也在 `CurrencyContext.normalizeRates` 复制到 `rates.NTD`）。新写入一律 `'NTD'`，老 DB 行会在 user 下次修改时被替换。
 - 添加新币种只改这一个文件 4 处。
 - 实时汇率：`https://api.exchangerate-api.com/v4/latest/CNY`，localStorage 缓存 1 小时（key: `ledger_fx_rates`）。
 - **存储时快照**：`AddTransaction.tsx` 把 currency→baseCurrency 的瞬时比率写入 `transactions.exchange_rate`。

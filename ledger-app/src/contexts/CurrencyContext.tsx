@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './AuthContext'
+import { normalizeCurrencyCode } from '../types'
 import type { Currency } from '../types'
 
 const CACHE_KEY = 'ledger_fx_rates'
@@ -41,10 +42,23 @@ function readUseLastUsed(): boolean {
 
 function readLastUsedCurrency(): Currency | null {
   try {
-    return (localStorage.getItem(LAST_USED_CURRENCY_KEY) as Currency | null) ?? null
+    const raw = localStorage.getItem(LAST_USED_CURRENCY_KEY)
+    return raw ? normalizeCurrencyCode(raw) : null
   } catch {
     return null
   }
+}
+
+/**
+ * FX API（exchangerate-api.com）的响应 key 仍是 'TWD'（ISO 4217），
+ * 但 App 内部已统一用 'NTD'，所以在边界把 TWD 复制到 NTD 让查表生效。
+ * 老的 localStorage 缓存也是同样处理。
+ */
+function normalizeRates(data: Record<string, number>): Record<string, number> {
+  if (data.TWD != null && data.NTD == null) {
+    return { ...data, NTD: data.TWD }
+  }
+  return data
 }
 
 export function CurrencyProvider({ children }: { children: React.ReactNode }) {
@@ -68,8 +82,10 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
       .then(({ data, error }) => {
         if (error) return
         if (data) {
-          if (data.preferred_currency) setBase(data.preferred_currency as Currency)
-          if (data.default_currency)   setDefault(data.default_currency as Currency)
+          // 历史 DB 行里若存的是 'TWD'，归一为 'NTD'。下次 setBaseCurrency
+          // / setDefaultCurrency 触发 upsert 时会用 'NTD' 写回。
+          if (data.preferred_currency) setBase(normalizeCurrencyCode(data.preferred_currency))
+          if (data.default_currency)   setDefault(normalizeCurrencyCode(data.default_currency))
         } else {
           // Row missing (registered before trigger) — create it now with defaults
           supabase.from('users_profile').upsert({ id: user!.id })
@@ -85,15 +101,16 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         if (cached) {
           const { ts, data } = JSON.parse(cached) as { ts: number; data: Record<string, number> }
           if (Date.now() - ts < CACHE_TTL) {
-            setRates(data)
+            setRates(normalizeRates(data))
             setRatesLoading(false)
             return
           }
         }
         const res = await fetch('https://api.exchangerate-api.com/v4/latest/CNY')
         const json = await res.json()
-        setRates(json.rates)
-        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: json.rates }))
+        const ratesData = normalizeRates(json.rates)
+        setRates(ratesData)
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ ts: Date.now(), data: ratesData }))
       } catch {
         // keep default rates (only CNY:1), amounts in other currencies won't convert
       } finally {
