@@ -13,6 +13,21 @@ type TransactionUpdate = Database['public']['Tables']['transactions']['Update']
 
 const CACHE_KEY = 'transactions'
 
+// 老版本写入的 transactions.currency = 'TWD'，新版统一用 'NTD'。读路径
+// 一律归一，UI 层就不必再考虑遗留值；新写入是 NTD，所以下次同步覆盖
+// localStorage 后旧值就自然消失。
+function normalizeTwd(rows: DbTransaction[]): DbTransaction[] {
+  let dirty = false
+  const out = rows.map((t) => {
+    if (t.currency === 'TWD') {
+      dirty = true
+      return { ...t, currency: 'NTD' }
+    }
+    return t
+  })
+  return dirty ? out : rows
+}
+
 /**
  * 全量加载用户的所有 transactions 一次进内存 + localStorage。数据量小
  * （一年几百条 transaction，每条 < 200B），过滤、聚合都在 JS 里做，
@@ -23,7 +38,7 @@ const CACHE_KEY = 'transactions'
  */
 export function useTransactions() {
   const { user } = useAuth()
-  const cached = loadCache<DbTransaction[]>(CACHE_KEY) ?? []
+  const cached = normalizeTwd(loadCache<DbTransaction[]>(CACHE_KEY) ?? [])
   const [transactions, setTransactions] = useState<DbTransaction[]>(cached)
   const [loading, setLoading] = useState(cached.length === 0)
   const [error, setError] = useState<string | null>(null)
@@ -54,7 +69,7 @@ export function useTransactions() {
     if (!error && data) {
       // 把服务端数据跟 outbox 里 pending 的本地写入合并 —— 兜底防 SW
       // 慢网下 NetworkFirst timeout 回退到旧缓存导致丢写入。
-      const list = outbox.applyOutboxTo('transactions', data as DbTransaction[])
+      const list = normalizeTwd(outbox.applyOutboxTo('transactions', data as DbTransaction[]))
       setTransactions(list)
       saveCache(CACHE_KEY, list)
       setLastSyncedAt(recordSync('transactions'))

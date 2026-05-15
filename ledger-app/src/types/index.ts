@@ -2,7 +2,7 @@ export type TransactionType = 'expense' | 'income' | 'transfer'
 
 export type Currency =
   | 'MYR' | 'SGD' | 'USD' | 'CNY' | 'HKD'
-  | 'JPY' | 'EUR' | 'GBP' | 'THB' | 'KHR' | 'TWD' | 'AUD' | 'MOP'
+  | 'JPY' | 'EUR' | 'GBP' | 'THB' | 'KHR' | 'NTD' | 'AUD' | 'MOP'
 
 export interface Transaction {
   id: string
@@ -27,8 +27,17 @@ export interface UserProfile {
 
 export const SUPPORTED_CURRENCIES: Currency[] = [
   'CNY', 'MYR', 'SGD', 'USD', 'HKD',
-  'JPY', 'EUR', 'GBP', 'THB', 'KHR', 'TWD', 'AUD', 'MOP',
+  'JPY', 'EUR', 'GBP', 'THB', 'KHR', 'NTD', 'AUD', 'MOP',
 ]
+
+/**
+ * 把历史遗留的 'TWD'（旧版本写入的 DB 行 / localStorage 缓存）归一为 'NTD'。
+ * 调用点：从 Supabase / dataCache 读出 currency 时；FX API 返回 rates 时。
+ * 写出始终是 'NTD'，所以归一化只发生在读侧。
+ */
+export function normalizeCurrencyCode(c: string | null | undefined): Currency {
+  return (c === 'TWD' ? 'NTD' : c) as Currency
+}
 
 export interface TxDetail {
   id: string
@@ -44,7 +53,7 @@ export interface TxDetail {
 
 export const CURRENCY_SYMBOLS: Record<Currency, string> = {
   CNY: '¥', MYR: 'RM', SGD: 'S$', USD: '$', HKD: 'HK$',
-  JPY: '¥', EUR: '€', GBP: '£', THB: '฿', KHR: '៛', TWD: 'NT$', AUD: 'A$', MOP: 'MOP$',
+  JPY: '¥', EUR: '€', GBP: '£', THB: '฿', KHR: '៛', NTD: 'NT$', AUD: 'A$', MOP: 'MOP$',
 }
 
 export const CURRENCY_LABELS: Record<Currency, string> = {
@@ -58,7 +67,7 @@ export const CURRENCY_LABELS: Record<Currency, string> = {
   GBP: '英镑 GBP',
   THB: '泰铢 THB',
   KHR: '柬埔寨瑞尔 KHR',
-  TWD: '新台币 TWD',
+  NTD: '新台币 NTD',
   AUD: '澳元 AUD',
   MOP: '澳门元 MOP',
 }

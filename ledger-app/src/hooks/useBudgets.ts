@@ -12,9 +12,22 @@ type BudgetInsert = Database['public']['Tables']['budgets']['Insert']
 
 const CACHE_KEY = 'budgets'
 
+// 历史 budgets.currency = 'TWD' 归一为 'NTD'，跟 useTransactions 一致。
+function normalizeTwd(rows: DbBudget[]): DbBudget[] {
+  let dirty = false
+  const out = rows.map((b) => {
+    if (b.currency === 'TWD') {
+      dirty = true
+      return { ...b, currency: 'NTD' }
+    }
+    return b
+  })
+  return dirty ? out : rows
+}
+
 export function useBudgets() {
   const { user } = useAuth()
-  const cached = loadCache<DbBudget[]>(CACHE_KEY) ?? []
+  const cached = normalizeTwd(loadCache<DbBudget[]>(CACHE_KEY) ?? [])
   const [budgets, setBudgets] = useState<DbBudget[]>(cached)
   const [loading, setLoading] = useState(cached.length === 0)
   const [error, setError] = useState<string | null>(null)
@@ -39,7 +52,7 @@ export function useBudgets() {
       .eq('user_id', user.id)
     if (error) setError(error.message)
     if (!error && data) {
-      const list = outbox.applyOutboxTo('budgets', data as DbBudget[])
+      const list = normalizeTwd(outbox.applyOutboxTo('budgets', data as DbBudget[]))
       setBudgets(list)
       saveCache(CACHE_KEY, list)
       setLastSyncedAt(recordSync('budgets'))
