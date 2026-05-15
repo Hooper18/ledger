@@ -66,9 +66,9 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
 ## 类目排序
 - `useCategorySort`（`src/hooks/useCategorySort.ts`）：两种模式
   - `custom`：用户在 `/category-order` 页里上下移动调好的顺序，按 type 分别存（localStorage key: `ledger_category_custom_order`，结构 `{ expense: string[], income: string[], transfer: string[] }`）。没排过就保留 `useCategories` 返回的服务端 created_at 顺序。
-  - `recent`：最近一次记账用过的类目排最前，未用过的按服务端默认顺序兜底（localStorage key: `ledger_category_recent`，结构 `{ [categoryId]: ISO 时间戳 }`）。
+  - `recent`：最近一次记账用过的类目排最前，未用过的按服务端默认顺序兜底。**"最近"由 caller 从 `useTransactions()` 的 `transactions` 数组派生**（每个 category_id 取最大的 `created_at`），不存独立 localStorage map —— 老用户的历史交易自动算数，避免另外维护一份状态同步。
 - 切换 / 写操作通过 `ledger:category-sort-changed` window 事件广播，所有 hook 实例 re-read localStorage，无需 Context Provider。
-- `AddTransaction` 保存成功后调 `recordUsage(selectedCategory)`。模式切换 + 入口都在 Settings → 类目排序。
+- 模式切换 + 入口都在 Settings → 类目排序；AddTransaction 渲染时把 lastUsedAt 透传给 `applySort`。
 
 ## 路由
 定义于 `src/App.tsx`，Provider 嵌套：`LanguageProvider → AuthProvider → CurrencyProvider`。
