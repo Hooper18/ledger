@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { CurrencyProvider } from './contexts/CurrencyContext'
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext'
 import { syncReminder } from './lib/notifications'
+import { migratePetToFruit } from './lib/categoryMigrations'
 import Layout from './components/layout/Layout'
 import Auth from './pages/Auth'
 import Home from './pages/Home'
@@ -46,6 +47,12 @@ function AppRoutes() {
       body: t('reminderNotifyBody'),
     }).catch(() => {})
   }, [t])
+
+  // 用户就绪后跑一次"宠物 → 水果"分类改名（幂等，已完成则即刻 return）
+  useEffect(() => {
+    if (!user) return
+    void migratePetToFruit(user.id)
+  }, [user])
 
   if (loading) return <LoadingScreen />
 

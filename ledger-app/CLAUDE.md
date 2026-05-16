@@ -34,6 +34,7 @@ React + Supabase 的多币种在线记账 PWA。前身：仓库根目录 `financ
 ### 触发器
 - **`handle_new_user`**：新用户注册 → 仅创建 `users_profile` 行，**不创建任何分类**。
 - 分类首次使用时由前端 `buildFallback()`（`src/pages/AddTransaction.tsx`）兜底返回默认列表。`AddTransaction` 进页只读 `useCategories()` 的 localStorage 快照 + `buildFallback` 兜底，**不再**自己发 supabase 请求 —— 避免冷启动 ~3s 等网络才出分类。
+- 老 DB 行重命名走 `src/lib/categoryMigrations.ts`：App 启动时 `migratePetToFruit(user.id)` 把名为"宠物"的分类改成"水果"（含图标），先改 localStorage 快照（避免闪一帧旧名），再 supabase UPDATE（跨设备生效），完成后写 localStorage flag 跳过后续轮询。完全幂等，UPDATE 命中 0 行无副作用。
 - `set_updated_at`：仅 `users_profile` / `transactions` 上挂触发器（`categories` / `budgets` 无 updated_at 列）。
 
 ### budgets.period
